@@ -102,7 +102,7 @@ function filter(f,b){filterNow=f;document.querySelectorAll('[data-f]').forEach(x
 function view(v){document.getElementById('cards').style.display=v==='list'?'grid':'none';document.getElementById('map').style.display=v==='map'?'block':'none';document.getElementById('lb').classList.toggle('active',v==='list');document.getElementById('mb').classList.toggle('active',v==='map')}
 function typeSet(t){typeNow=t;['tGive','tLook','tEx'].forEach(x=>document.getElementById(x).classList.remove('active'));document.getElementById(t==='give'?'tGive':t==='looking'?'tLook':'tEx').classList.add('active');document.getElementById('ftitle').textContent=t==='give'?'Что отдаёте?':t==='looking'?'Что ищете?':'Что отдаёте и что хотите получить?'}
 function time(t,b){timeNow=t;document.querySelectorAll('#times .chip').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('custom').style.display=t==='Свой вариант'?'block':'none'}
-function next(n){if(n===2&&(!item.value.trim()||!qty.value.trim())){alert('Напишите, что это и примерное количество.');return}if(n===3){let when=timeNow==='Свой вариант'?(custom.value.trim()||'По договорённости'):timeNow;review.innerHTML=`<b>${typeNow==='give'?'Отдам':typeNow==='looking'?'Ищу':'Обменяю'}: ${esc(item.value)}</b><p><b>${esc(qty.value)}</b></p><p><b>${esc(document.getElementById('categorySelect')?.selectedOptions[0]?.text||'Урожай')}</b></p><p>${esc(comment.value)||'Без комментария'}</p><span>📍 ${esc(document.getElementById('listingSettlement').value||'')}${place.value?' · '+esc(place.value):''}${landmark.value?' · '+esc(landmark.value):''}</span><br><span>🕒 ${esc(when)}</span>`}['fs1','fs2','fs3'].forEach((x,i)=>document.getElementById(x).style.display=i===n-1?'block':'none');['st1','st2','st3'].forEach((x,i)=>document.getElementById(x).classList.toggle('on',i<n));go('give')}
+function next(n){if(n===2&&(!item.value.trim()||!qty.value.trim())){alert('Напишите, что это и примерное количество.');return}if(n===3&&(!document.getElementById('listingRegion')?.value.trim()||!document.getElementById('listingSettlement')?.value.trim())){alert('Укажите регион и город, посёлок или село.');return}if(n===3){let when=timeNow==='Свой вариант'?(custom.value.trim()||'По договорённости'):timeNow;review.innerHTML=`<b>${typeNow==='give'?'Отдам':typeNow==='looking'?'Ищу':'Обменяю'}: ${esc(item.value)}</b><p><b>${esc(qty.value)}</b></p><p><b>${esc(document.getElementById('categorySelect')?.selectedOptions[0]?.text||'Урожай')}</b></p><p>${esc(comment.value)||'Без комментария'}</p><span>📍 ${esc(document.getElementById('listingSettlement').value||'')}${place.value?' · '+esc(place.value):''}${landmark.value?' · '+esc(landmark.value):''}</span><br><span>🕒 ${esc(when)}</span>`}['fs1','fs2','fs3'].forEach((x,i)=>document.getElementById(x).style.display=i===n-1?'block':'none');['st1','st2','st3'].forEach((x,i)=>document.getElementById(x).classList.toggle('on',i<n));go('give')}
 async function ensureDevSession(){
   if(!window.komuDb) throw new Error('Supabase не подключён.');
   const {data:{session}} = await window.komuDb.auth.getSession();
@@ -338,14 +338,13 @@ async function request(listingId){
 
     let conversation=existing;
     if(!conversation){
-      const participants=[session.user.id,listing.ownerId].sort();
       const {data: created,error:createError}=await window.komuDb
         .from('conversations')
         .insert({
           listing_id:listing.id,
           listing_title:listing.n,
-          participant_one:participants[0],
-          participant_two:participants[1]
+          participant_one:session.user.id,
+          participant_two:listing.ownerId
         })
         .select('id')
         .single();
