@@ -82,7 +82,7 @@ const data=[
 {t:'exchange',c:'exchange',i:'🔄',n:'Кабачки на яблоки',q:'есть 6 кабачков',p:'Центр',w:'По договорённости',d:'≈ 2 км',x:'Есть кабачки, хотелось бы яблоки.'}];
 let filterNow='all',typeNow='give',timeNow='Сегодня',editingListingId=null;
 let isTestMode=new URLSearchParams(window.location.search).get('test')==='1';
-function go(id){document.getElementById(id).scrollIntoView({behavior:'smooth'})}function startGive(){go('give');typeSet('give')}
+function go(id){document.getElementById(id).scrollIntoView({behavior:'smooth'})}function startGive(){const title=document.querySelector('#give .sectionHead h2');if(title)title.textContent='Отдать или найти';go('give');typeSet('give')}
 function getFilteredListings(){
   const q=(document.getElementById('q')?.value||'').toLowerCase().trim();
   const matchesFilter=x=>{
@@ -544,6 +544,8 @@ async function publish(){
 }
 function resetForm(){
   editingListingId=null;
+  const title=document.querySelector('#give .sectionHead h2');
+  if(title)title.textContent='Отдать или найти';
   done.style.display='none';
   ['item','qty','comment','listingRegion','listingSettlement','place','landmark','custom','exchangeWant'].forEach(x=>{
     const el=document.getElementById(x);
@@ -1040,14 +1042,14 @@ function help(){open('Помощь и ответы',`
 
 <details class="faqDetail">
   <summary>Что делать, если объявление или человек вызывает вопросы?</summary>
-  <p>Не передавайте лишние личные данные. При подозрительном объявлении используйте жалобу, когда она появится в рабочей версии сайта.</p>
+  <p>Не передавайте лишние личные данные. Если объявление нарушает правила или вызывает вопросы, откройте его и нажмите «Пожаловаться».</p>
 </details>
 
 <div class="notice">🤖 Помощник знает только «Кому кабачок?» и его правила. Можно спросить: «Как убрать объявление?», «Где выбрать место?» или «Как отдать банки?».</div>
 `)}
 
 function ai(){open('Помощник «Кому кабачок?»',`<p><b>Я знаю только этот сайт и его правила.</b></p><div class="modebar"><button class="chip" onclick="answer('банки')">Как отдать банки?</button><button class="chip" onclick="answer('карта')">Как работает карта?</button><button class="chip" onclick="answer('убрать')">Как убрать объявление?</button></div><div id="ans" class="review">Выберите вопрос.</div>`)}
-function answer(x){ans.innerHTML=x==='банки'?'<b>Как отдать банки?</b><p>«Отдать урожай» → напишите «стеклянные банки» → количество → место → время → публикация.</p>':x==='карта'?'<b>Как работает карта?</b><p>Можно найти место по адресу или поставить точку. Публично показываем только примерное место, не домашний адрес.</p>':'<b>Как убрать объявление?</b><p>В рабочей версии: «Мои объявления» → нужное объявление → «Убрать объявление».</p>'}
+function answer(x){ans.innerHTML=x==='банки'?'<b>Как отдать банки?</b><p>«Отдать урожай» → напишите «стеклянные банки» → количество → место → время → публикация.</p>':x==='карта'?'<b>Как работает карта?</b><p>Можно найти место по адресу или поставить точку. Публично показываем только примерное место, не домашний адрес.</p>':'<b>Как убрать объявление?</b><p>«Мои объявления» → нужное объявление → нажмите «Изменить», «Удалить» или кнопку завершения.</p>'}
 let currentConversationId=null;
 
 async function request(listingId){
