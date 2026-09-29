@@ -338,11 +338,9 @@ async function loadLiveListings(){
     x:x.description || ''
   }));
 
-  if(live.length){
-    data.length = 0;
-    data.push(...live);
-    render();
-  }
+  data.length = 0;
+  data.push(...live);
+  render();
 }
 loadLiveListings();
 
