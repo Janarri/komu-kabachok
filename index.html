@@ -404,6 +404,49 @@ async function ensureDevSession(){
   return data.session;
 }
 
+function containsSaleLanguage(text){
+  const value=String(text||'').toLowerCase();
+  return /₽|руб(?:.|лей|ля|ль)?\b|\bцена\b|\bпродам\b|\bпродажа\b|\bпродаю\b/.test(value);
+}
+function sanitizePublicLocationLabel(value){
+  let v=String(value||'').trim();
+  if(!v) return '';
+  v=v.replace(/\+?\d[\d\s().-]{7,}\d/g,'');
+  v=v.replace(/\b(?:дом|д\.|квартира|кв\.|кв|подъезд|подъезду|корпус|корп\.)\s*\d+[\w/-]*/gi,'');
+  v=v.replace(/[,;]\s*\d{1,4}(?:[/-]\d{1,4})?\s*$/,'');
+  v=v.replace(/\s+\d{1,4}(?:[/-]\d{1,4})?\s*$/,'');
+  v=v.replace(/\s{2,}/g,' ').replace(/\s*[,;]\s*([,;])/g,'$1').replace(/^[,;\s]+|[,;\s]+$/g,'').trim();
+  return v;
+}
+async function uploadListingPhotos(listingId,ownerId){
+  const input=document.getElementById('photos');
+  if(!input||!input.files?.length) return;
+  const files=[...input.files].slice(0,5);
+  const uploaded=[];
+  try{
+    for(let i=0;i<files.length;i++){
+      const file=files[i];
+      if(file.size>5*1024*1024) throw new Error('Фото «'+file.name+'» больше 5 МБ.');
+      if(!/^image\/(jpeg|png|webp)$/i.test(file.type)) throw new Error('Фото «'+file.name+'» имеет неподдерживаемый формат. Используйте JPG, PNG или WebP.');
+      const ext=(file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg');
+      const id=crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+i;
+      const path=ownerId+'/'+listingId+'/'+id+'.'+ext;
+      const {error:uploadError}=await window.komuDb.storage.from('listing-photos').upload(path,file,{upsert:false,cacheControl:'3600'});
+      if(uploadError) throw uploadError;
+      uploaded.push(path);
+      const {error:rowError}=await window.komuDb.from('listing_photos').insert({
+        listing_id:listingId,
+        owner_id:ownerId,
+        storage_path:path,
+        sort_order:i
+      });
+      if(rowError) throw rowError;
+    }
+  }catch(error){
+    if(uploaded.length) await window.komuDb.storage.from('listing-photos').remove(uploaded);
+    throw error;
+  }
+}
 async function publish(){
   const when=timeNow==='Свой вариант'?(custom.value.trim()||'По договорённости'):timeNow;
   const titleVal=item.value.trim();
