@@ -435,6 +435,15 @@ async function openConversation(conversationId,title){
     `);
     const box=document.getElementById('liveChat');
     if(box) box.scrollTop=box.scrollHeight;
+    const input=document.getElementById('messageInput');
+    if(input){
+      input.addEventListener('keydown',e=>{
+        if(e.key==='Enter' && !e.shiftKey){
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+    }
     await subscribeToConversation(conversationId);
   }catch(error){
     open('Сообщения',`<div class="notice">${esc(error.message||'Не удалось открыть переписку.')}</div>`);
