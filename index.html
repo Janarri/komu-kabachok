@@ -374,7 +374,7 @@ async function openMessages(){
     open('Сообщения',`
       <div>
         ${(rows||[]).length?(rows||[]).map(x=>`
-          <button class="btn" style="width:100%;text-align:left;margin:0 0 8px" onclick="openConversation('${x.id}',${JSON.stringify(x.listing_title||'Объявление')})">
+          <button class="btn" style="width:100%;text-align:left;margin:0 0 8px" onclick='openConversation("${x.id}",${JSON.stringify(x.listing_title||'Объявление')})'>
             💬 <b>${esc(x.listing_title||'Объявление')}</b><br><span class="muted">Открыть переписку</span>
           </button>`).join(''):'<div class="notice">Пока нет переписок.</div>'}
       </div>`);
