@@ -168,8 +168,10 @@ async function refreshKabachokMap(){
   if(!kabachokMapInited || !kabachokMap) return;
   const req=++kabachokMapRequest;
   const saved=getSavedLocation();
-  let center=Number.isFinite(Number(saved.lat))&&Number.isFinite(Number(saved.lng))?[Number(saved.lat),Number(saved.lng)]:null;
-  const query=[saved.settlement,saved.region].filter(Boolean).join(', ');
+  const mapRegion=isTestMode?'Ростовская область':saved.region;
+  const mapSettlement=isTestMode?'Новочеркасск':saved.settlement;
+  let center=isTestMode?null:(Number.isFinite(Number(saved.lat))&&Number.isFinite(Number(saved.lng))?[Number(saved.lat),Number(saved.lng)]:null);
+  const query=[mapSettlement,mapRegion].filter(Boolean).join(', ');
   if(!center) center=await geocodePlace(query);
   let usedBrowserLocation=false;
   if(!center && !saved.settlement){
@@ -183,9 +185,9 @@ async function refreshKabachokMap(){
   if(kabachokMapMarker) kabachokMap.geoObjects.remove(kabachokMapMarker);
   if(center){
     kabachokMapMarker=new ymaps.Placemark(target,{
-      hintContent:saved.settlement||(usedBrowserLocation?'Ваше местоположение':'Выбранное место'),
-      balloonContent:saved.settlement
-        ? '<b>'+esc(saved.settlement)+'</b><br>Регион: '+esc(saved.region||'')+'<br>Примерный центр выбранного места.'
+      hintContent:mapSettlement||(usedBrowserLocation?'Ваше местоположение':'Выбранное место'),
+      balloonContent:mapSettlement
+        ? '<b>'+esc(mapSettlement)+'</b><br>Регион: '+esc(mapRegion||'')+'<br>Примерный центр выбранного места.'
         : (usedBrowserLocation ? '<b>Ваше местоположение</b><br>Карта центрирована по геопозиции браузера.' : '<b>Выбранное место</b>')
     },{
       preset:'islands#greenDotIcon'
@@ -299,8 +301,10 @@ async function initKabachokMap(){
   }
   await new Promise(resolve=>window.ymaps.ready(resolve));
   const saved=getSavedLocation();
-  let initialCenter=Number.isFinite(Number(saved.lat))&&Number.isFinite(Number(saved.lng))?[Number(saved.lat),Number(saved.lng)]:null;
-  if(!initialCenter) initialCenter=await geocodePlace([saved.settlement,saved.region].filter(Boolean).join(', '));
+  const mapRegion=isTestMode?'Ростовская область':saved.region;
+  const mapSettlement=isTestMode?'Новочеркасск':saved.settlement;
+  let initialCenter=isTestMode?null:(Number.isFinite(Number(saved.lat))&&Number.isFinite(Number(saved.lng))?[Number(saved.lat),Number(saved.lng)]:null);
+  if(!initialCenter) initialCenter=await geocodePlace([mapSettlement,mapRegion].filter(Boolean).join(', '));
   let initialZoom=initialCenter?11:3;
   if(!initialCenter && !saved.settlement){
     initialCenter=await getBrowserCoordinates();
