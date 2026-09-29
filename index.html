@@ -422,6 +422,8 @@ async function uploadListingPhotos(listingId,ownerId){
   const input=document.getElementById('photos');
   if(!input||!input.files?.length) return;
   const files=[...input.files].slice(0,5);
+  const {data:existing}=await window.komuDb.from('listing_photos').select('sort_order').eq('listing_id',listingId).order('sort_order',{ascending:false}).limit(1);
+  const offset=Number(existing?.[0]?.sort_order)>=0?Number(existing[0].sort_order)+1:0;
   const uploaded=[];
   try{
     for(let i=0;i<files.length;i++){
@@ -438,7 +440,7 @@ async function uploadListingPhotos(listingId,ownerId){
         listing_id:listingId,
         owner_id:ownerId,
         storage_path:path,
-        sort_order:i
+        sort_order:offset+i
       });
       if(rowError) throw rowError;
     }
@@ -693,6 +695,9 @@ async function deleteListing(id){
   if(!confirm('Удалить это объявление? Восстановить его потом будет нельзя.')) return;
   try{
     const session=await ensureDevSession();
+    const {data:photos}=await window.komuDb.from('listing_photos').select('storage_path').eq('listing_id',id).eq('owner_id',session.user.id);
+    const paths=(photos||[]).map(x=>x.storage_path).filter(Boolean);
+    if(paths.length) await window.komuDb.storage.from('listing-photos').remove(paths);
     const {error}=await window.komuDb.from('listings').delete().eq('id',id).eq('owner_id',session.user.id);
     if(error) throw error;
     await openMyListings();
@@ -701,7 +706,6 @@ async function deleteListing(id){
     open('Не получилось удалить объявление',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div>`);
   }
 }
-
 async function refreshListing(id){
   try{
     const session=await ensureDevSession();
@@ -1247,7 +1251,7 @@ async function sendMessage(){
       body
     });
     if(error) throw error;
-    await window.komuDb.from('conversations').update({updated_at:new Date().toISOString()}).eq('id',currentConversationId);
+
     const title=document.querySelector('#mbody .muted b')?.textContent||'Объявление';
     await openConversation(currentConversationId,title);
   }catch(error){
