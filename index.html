@@ -914,8 +914,8 @@ function setupAddressSuggest(inputId,menuId,onPick){
   input.addEventListener('input',()=>{
     const q=input.value.trim();
     input.classList.remove('suggestChosen');
-    if(inputId==='settlementInput')window.selectedLocationCoords=null;
-    if(inputId==='listingSettlement')window.listingSettlementCoords=null;
+    if(inputId==='settlementInput'){window.selectedLocationCoords=null;window.selectedLocationData=null;}
+    if(inputId==='listingSettlement'){window.listingSettlementCoords=null;window.listingSettlementData=null;}
     clearTimeout(suggestTimers[inputId]);
     if(q.length<2){hide();return}
     suggestTimers[inputId]=setTimeout(async()=>{
@@ -1003,6 +1003,7 @@ async function detectMyLocation(){
   if(regionInput)regionInput.value=found.region;
   if(districtInput&&found.district&&!districtInput.value)districtInput.value=found.district;
   window.selectedLocationCoords=[coords[0],coords[1]];
+  window.selectedLocationData={region:found.region,settlement:found.settlement,district:found.district||'',coords:[coords[0],coords[1]]};
   if(status) status.textContent='✓ Нашли: '+found.settlement+(found.district?' · '+found.district:'');
 }
 async function saveLocation(){
