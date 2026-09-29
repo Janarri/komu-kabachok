@@ -607,25 +607,33 @@ async function openMyListings(){
     const session=await ensureDevSession();
     const {data: rows,error}=await window.komuDb
       .from('listings')
-      .select('id,type,title,quantity,settlement,pickup_time,status,created_at')
+      .select('id,type,category,title,quantity,description,settlement,pickup_time,status,created_at,updated_at,location_label,location_lat,location_lng,exchange_give,exchange_want')
       .eq('owner_id',session.user.id)
       .order('created_at',{ascending:false});
-
     if(error) throw error;
-
     const active=(rows||[]).filter(x=>x.status==='active');
     const doneRows=(rows||[]).filter(x=>x.status!=='active');
-
     const iconFor=x=>x.type==='give'?'🌱':x.type==='looking'?'🙋':'🔄';
+    const staleDays=x=>Math.max(0,Math.floor((Date.now()-new Date(x.updated_at||x.created_at).getTime())/86400000));
     open('Мои объявления',`
       <div class="listingMine">
         ${active.length?active.map(x=>`
           <div class="mineRow">
-            <div><b>${iconFor(x)} ${esc(x.title)}</b><br><span class="muted">${esc(x.quantity||'')} · ${esc(x.settlement||'')} · ${esc(x.pickup_time||'')}</span></div>
-            <div class="mineActions"><button class="btn" onclick="editListing('${x.id}')">Изменить</button><button class="btn" onclick="deleteListing('${x.id}')">Удалить</button><button class="btn soft" onclick="completeListing('${x.id}')">✓ ${x.type==='looking'?'Нашёл!':x.type==='exchange'?'Обмен состоялся!':'Урожай пристроен!'}</button></div>
+            <div class="mineInfo">
+              <button type="button" class="listingTitleLink" onclick="openListingDetails('${x.id}')"><b>${iconFor(x)} ${esc(x.title)}</b></button>
+              <span class="muted">${esc(x.quantity||'')} · ${esc(x.settlement||'')} · ${esc(x.pickup_time||'')}</span>
+              ${staleDays(x)>=30?'<span class="staleNotice">Похоже, объявление уже не новое — всё ещё актуально?</span>':''}
+            </div>
+            <div class="mineActions">
+              ${staleDays(x)>=30?'<button class="btn" onclick="refreshListing(\''+x.id+'\')">Оставить объявление</button>':''}
+              <button class="btn" onclick="editListing('${x.id}')">Изменить</button>
+              <button class="btn" onclick="deleteListing('${x.id}')">Удалить</button>
+              <button class="btn soft" onclick="completeListing('${x.id}')">✓ ${x.type==='looking'?'Нашёл!':x.type==='exchange'?'Обмен состоялся!':'Урожай пристроен!'}</button>
+            </div>
           </div>`).join(''):'<div class="notice">Активных объявлений пока нет.</div>'}
         <h3 style="margin-top:22px">Завершённые</h3>
-        ${doneRows.length?doneRows.map(x=>`<div class="mineDone">${iconFor(x)} ${esc(x.title)} — завершено</div>`).join(''):'<p class="muted">Пока пусто.</p>'}
+        ${doneRows.length?doneRows.map(x=>`
+          <button type="button" class="mineDone listingTitleLink" onclick="openListingDetails('${x.id}')">${iconFor(x)} ${esc(x.title)} — завершено</button>`).join(''):'<p class="muted">Пока пусто.</p>'}
       </div>`);
   }catch(error){
     console.error('Мои объявления:',error);
@@ -633,14 +641,207 @@ async function openMyListings(){
   }
 }
 
+async function editListing(id){
+  try{
+    const session=await ensureDevSession();
+    const {data:x,error}=await window.komuDb
+      .from('listings')
+      .select('id,type,category,title,quantity,description,settlement,region,pickup_time,location_label,landmark,location_lat,location_lng,exchange_want,status')
+      .eq('id',id)
+      .eq('owner_id',session.user.id)
+      .single();
+    if(error) throw error;
+    if(x.status!=='active'){
+      open('Объявление уже завершено','<div class="notice">Завершённые объявления нельзя менять.</div>');
+      return;
+    }
+    closeM();
+    editingListingId=x.id;
+    typeSet(x.type);
+    document.getElementById('item').value=x.title||'';
+    document.getElementById('qty').value=x.quantity||'';
+    document.getElementById('comment').value=(x.description&&x.description!=='Без комментария')?x.description:'';
+    document.getElementById('listingRegion').value=x.region||'';
+    document.getElementById('listingSettlement').value=x.settlement||'';
+    document.getElementById('place').value=x.location_label||'';
+    document.getElementById('landmark').value=x.landmark||'';
+    document.getElementById('exchangeWant').value=x.exchange_want||'';
+    document.getElementById('categorySelect').value=x.category||'harvest';
+    document.getElementById('photos').value='';
+    document.getElementById('photoPreview').innerHTML='';
+    window.listingLat=Number.isFinite(Number(x.location_lat))?Number(x.location_lat):null;
+    window.listingLng=Number.isFinite(Number(x.location_lng))?Number(x.location_lng):null;
+    window.listingSettlementCoords=window.listingLat!==null&&window.listingLng!==null?[window.listingLat,window.listingLng]:null;
+    const status=document.getElementById('listingMapStatus');
+    if(status)status.textContent=window.listingSettlementCoords?'✓ Примерное место уже выбрано.':'Точка на карте не выбрана.';
+    const standard=['Сегодня','Завтра','В любое время'];
+    const timeButtons=[...document.querySelectorAll('#times .chip')];
+    const tb=timeButtons.find(b=>b.textContent.trim()===x.pickup_time);
+    if(tb){time(x.pickup_time,tb);}
+    else{
+      timeNow='Свой вариант';
+      document.getElementById('custom').style.display='block';
+      document.getElementById('custom').value=x.pickup_time||'';
+      timeButtons.forEach(b=>b.classList.toggle('active',b.textContent.trim()==='Свой вариант'));
+    }
+    document.getElementById('done').style.display='none';
+    ['fs1','fs2','fs3'].forEach((id,i)=>document.getElementById(id).style.display=i===0?'block':'none');
+    ['st1','st2','st3'].forEach((id,i)=>document.getElementById(id).classList.toggle('on',i===0));
+    const title=document.querySelector('#give .sectionHead h2');
+    if(title)title.textContent='Изменить объявление';
+    go('give');
+  }catch(error){
+    open('Не получилось открыть объявление для редактирования',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div>`);
+  }
+}
+
+async function deleteListing(id){
+  if(!confirm('Удалить это объявление? Восстановить его потом будет нельзя.')) return;
+  try{
+    const session=await ensureDevSession();
+    const {error}=await window.komuDb.from('listings').delete().eq('id',id).eq('owner_id',session.user.id);
+    if(error) throw error;
+    await openMyListings();
+    await loadLiveListings();
+  }catch(error){
+    open('Не получилось удалить объявление',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div>`);
+  }
+}
+
+async function refreshListing(id){
+  try{
+    const session=await ensureDevSession();
+    const {error}=await window.komuDb.from('listings').update({updated_at:new Date().toISOString()}).eq('id',id).eq('owner_id',session.user.id).eq('status','active');
+    if(error) throw error;
+    await openMyListings();
+  }catch(error){
+    open('Не получилось обновить объявление',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div>`);
+  }
+}
+
 async function completeListing(id){
   try{
-    const {error}=await window.komuDb.from('listings').update({status:'completed',updated_at:new Date().toISOString()}).eq('id',id);
+    const session=await ensureDevSession();
+    const {error}=await window.komuDb.from('listings').update({status:'completed',updated_at:new Date().toISOString()}).eq('id',id).eq('owner_id',session.user.id);
     if(error) throw error;
     await openMyListings();
     await loadLiveListings();
   }catch(error){
     open('Не получилось закрыть объявление',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div>`);
+  }
+}
+
+async function openListingDetails(id){
+  try{
+    const session=await ensureDevSession();
+    const [{data:x,error},{data:photos,error:photoError}]=await Promise.all([
+      window.komuDb.from('listings').select('id,owner_id,type,category,title,quantity,description,region,settlement,district,location_label,location_lat,location_lng,pickup_time,status,created_at,updated_at,exchange_want').eq('id',id).single(),
+      window.komuDb.from('listing_photos').select('id,storage_path,sort_order').eq('listing_id',id).order('sort_order',{ascending:true})
+    ]);
+    if(error) throw error;
+    if(photoError)console.warn('Фото объявления:',photoError.message);
+    const mine=x.owner_id===session.user.id;
+    const photoHtml=(photos||[]).map(p=>{
+      const {data}=window.komuDb.storage.from('listing-photos').getPublicUrl(p.storage_path);
+      return data?.publicUrl?`<img class="listingPhoto" src="${esc(data.publicUrl)}" alt="${esc(x.title)}" loading="lazy">`:'';
+    }).join('');
+    const typeLabel=x.type==='give'?'Отдам':x.type==='looking'?'Ищу':'Обмен';
+    const content=`
+      <div class="detailTopline"><span class="tag">${typeLabel}</span><span class="muted">${x.status==='active'?'Активно':'Завершено'}</span></div>
+      <h2 class="detailTitle">${esc(x.title)}</h2>
+      <div class="detailQty"><b>${esc(x.quantity||'')}</b></div>
+      ${x.type==='exchange'&&x.exchange_want?'<div class="detailExchange"><b>Хочу в обмен:</b> '+esc(x.exchange_want)+'</div>':''}
+      ${photoHtml?'<div class="photoGallery">'+photoHtml+'</div>':''}
+      <div class="detailText">${esc(x.description||'')}</div>
+      <div class="detailMeta"><div>📍 <b>${esc(x.settlement||'')}</b>${x.location_label?' · '+esc(sanitizePublicLocationLabel(x.location_label)):''}</div><div>🕒 ${esc(x.pickup_time||'По договорённости')}</div></div>
+      <div class="detailActions">
+        ${mine&&x.status==='active'?'<button class="btn" onclick="editListing(\''+x.id+'\')">Изменить</button><button class="btn" onclick="deleteListing(\''+x.id+'\')">Удалить</button><button class="btn soft" onclick="completeListing(\''+x.id+'\');">✓ '+(x.type==='looking'?'Нашёл!':x.type==='exchange'?'Обмен состоялся!':'Урожай пристроен!')+'</button>':(!mine&&x.status==='active'?'<button class="btn primary big" onclick="request(\''+x.id+'\')">'+(x.type==='give'?'Хочу забрать':x.type==='looking'?'Откликнуться':'Предложить обмен')+'</button><button class="btn" onclick="reportListing(\''+x.id+'\')">Пожаловаться</button>':'')}
+      </div>`;
+    open('Объявление',content);
+  }catch(error){
+    open('Не удалось открыть объявление',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div>`);
+  }
+}
+
+async function reportListing(id){
+  const reasons=[['price','Указана цена или продажа'],['address','Указан точный домашний адрес'],['forbidden','Не подходит для этого сайта'],['other','Другое']];
+  open('Пожаловаться на объявление',`<p class="muted">Выберите причину. Жалоба сохранится для проверки.</p><div class="reportReasons">${reasons.map(([code,label])=>'<button class="btn reportReason" type="button" data-reason="'+code+'">'+label+'</button>').join('')}</div>`);
+  document.querySelectorAll('#mbody .reportReason').forEach(btn=>{
+    btn.addEventListener('click',()=>submitReport(id,btn.dataset.reason));
+  });
+}
+async function submitReport(id,reason){
+  try{
+    const session=await ensureDevSession();
+    const {error}=await window.komuDb.from('listing_reports').insert({listing_id:id,reporter_id:session.user.id,reason});
+    if(error){
+      if(error.code==='23505'){
+        open('Жалоба уже отправлена','<div class="notice ok">Вы уже отправляли жалобу на это объявление.</div>');
+        return;
+      }
+      throw error;
+    }
+    open('Спасибо','<div class="notice ok">Жалоба отправлена. Мы сохранили её для проверки.</div><button class="btn primary" onclick="closeM()">Понятно</button>');
+  }catch(error){
+    open('Не получилось отправить жалобу',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div>`);
+  }
+}
+
+async function refreshNotificationCount(){
+  if(!window.komuDb)return;
+  try{
+    const session=await ensureDevSession();
+    const {count,error}=await window.komuDb.from('notifications').select('id',{count:'exact',head:true}).eq('recipient_id',session.user.id).is('read_at',null);
+    if(error)throw error;
+    const el=document.getElementById('notificationCount');
+    if(el){el.textContent=count?String(Math.min(count,99)):'';el.style.display=count?'inline-flex':'none';}
+  }catch(error){console.warn('Уведомления:',error.message)}
+}
+
+async function markConversationNotificationsRead(conversationId){
+  if(!conversationId)return;
+  try{
+    const session=await ensureDevSession();
+    await window.komuDb.from('notifications').update({read_at:new Date().toISOString()})
+      .eq('recipient_id',session.user.id).eq('conversation_id',conversationId).is('read_at',null);
+    refreshNotificationCount();
+  }catch(error){console.warn('Прочтение уведомлений:',error.message)}
+}
+
+async function openNotifications(){
+  try{
+    const session=await ensureDevSession();
+    const {data:rows,error}=await window.komuDb.from('notifications')
+      .select('id,type,conversation_id,listing_id,title,body,created_at,read_at')
+      .eq('recipient_id',session.user.id)
+      .order('created_at',{ascending:false})
+      .limit(30);
+    if(error)throw error;
+    open('Уведомления',`
+      ${(rows||[]).length?(rows||[]).map(n=>`
+        <button type="button" class="notificationItem ${n.read_at?'':'unread'}" data-notification-id="${esc(n.id)}" data-conversation-id="${esc(n.conversation_id||'')}">
+          <b>${esc(n.title||'Сообщение')}</b><span>${esc(n.body||'')}</span><small>${new Date(n.created_at).toLocaleString('ru-RU')}</small>
+        </button>`).join(''):'<div class="notice">Новых уведомлений нет.</div>'}
+    `);
+    document.querySelectorAll('#mbody .notificationItem').forEach(btn=>{
+      btn.addEventListener('click',async()=>{
+        const notificationId=btn.dataset.notificationId;
+        const conversationId=btn.dataset.conversationId;
+        try{
+          const s=await ensureDevSession();
+          await window.komuDb.from('notifications').update({read_at:new Date().toISOString()}).eq('id',notificationId).eq('recipient_id',s.user.id);
+        }catch(e){}
+        refreshNotificationCount();
+        if(conversationId){
+          const title=btn.querySelector('b')?.textContent||'Объявление';
+          await openConversation(conversationId,title);
+        }else{
+          btn.classList.remove('unread');
+        }
+      });
+    });
+  }catch(error){
+    open('Уведомления',`<div class="notice">${esc(error.message||'Не удалось загрузить уведомления.')}</div>`);
   }
 }
 
