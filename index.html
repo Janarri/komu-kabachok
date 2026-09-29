@@ -339,6 +339,14 @@ async function initKabachokMap(){
 }
 
 function view(v){
+  if(v==='map'&&!isTestMode){
+    const saved=getSavedLocation();
+    if(!saved.settlement){
+      view('list');
+      chooseLocation();
+      return;
+    }
+  }
   document.getElementById('cards').style.display=v==='list'?'grid':'none';
   document.getElementById('map').style.display=v==='map'?'block':'none';
   document.getElementById('lb').classList.toggle('active',v==='list');
@@ -1019,18 +1027,28 @@ setTimeout(()=>{setupAddressSuggest('listingSettlement','listingSettlementSugges
 
 async function loadLiveListings(){
   if(!window.komuDb) return;
-  const saved=JSON.parse(localStorage.getItem('komuKabachokLocation')||'null')||{region:'Ростовская область',settlement:'Новочеркасск',district:'',lat:null,lng:null};
+  const saved=getSavedLocation();
   const region=isTestMode?'Ростовская область':saved.region;
   const settlement=isTestMode?'Новочеркасск':saved.settlement;
+  data.length=0;
+  if(!region||!settlement){
+    const sub=document.getElementById('locationSub');
+    if(sub)sub.textContent='Сначала выберите город, чтобы увидеть объявления.';
+    render();
+    return;
+  }
   const {data: rows, error} = await window.komuDb
     .from('listings')
-    .select('id,owner_id,type,category,title,quantity,description,region,settlement,district,landmark,location_label,location_lat,location_lng,pickup_time,status,created_at')
+    .select('id,owner_id,type,category,title,quantity,description,region,settlement,district,landmark,location_label,location_lat,location_lng,pickup_time,status,created_at,updated_at,exchange_give,exchange_want')
     .eq('status','active')
     .eq('region',region)
     .eq('settlement',settlement)
     .order('created_at',{ascending:false});
   if(error){
     console.warn('Не удалось загрузить объявления из Supabase:', error.message);
+    const sub=document.getElementById('locationSub');
+    if(sub)sub.textContent='Не удалось загрузить объявления. Попробуйте обновить страницу.';
+    render();
     return;
   }
   const live=(rows||[]).map(x=>({
@@ -1038,23 +1056,21 @@ async function loadLiveListings(){
     i:x.category==='harvest'?'🥒':x.category==='preserves'?'🫙':x.category==='plants'?'🌱':'📦',
     n:x.title,q:x.quantity||'',
     p:x.settlement ? (x.location_label ? x.settlement+' · '+x.location_label : x.settlement) : (x.location_label||''),
-    w:x.pickup_time||'По договорённости',d:'',x:x.description||'',lat:x.location_lat,lng:x.location_lng
+    w:x.pickup_time||'По договорённости',d:'',x:x.description||'',
+    lat:x.location_lat,lng:x.location_lng,exchangeWant:x.exchange_want||''
   }));
-  data.length=0;
   data.push(...live);
-  if(isTestMode){
-    const current=document.getElementById('currentLocation');
-    const sub=document.getElementById('locationSub');
-    if(current) current.textContent='Новочеркасск';
-    if(sub) sub.textContent='Режим проверки: тестовые объявления.';
-  }
+  const sub=document.getElementById('locationSub');
+  if(sub)sub.textContent='Объявления из выбранного места.';
+  if(isTestMode && sub)sub.textContent='Режим проверки: тестовые объявления.';
   render();
 }
 loadLiveListings();
 setTimeout(()=>{
   const saved=getSavedLocation();
   const current=document.getElementById('heroLocation');
-  if(current) current.textContent=saved.settlement+(saved.district?' · '+saved.district:'');
+  if(current) current.textContent=saved.settlement?(saved.settlement+(saved.district?' · '+saved.district:'')):'Выберите город';
+  refreshNotificationCount();
 },0);
 
 render();
