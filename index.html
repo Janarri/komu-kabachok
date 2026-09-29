@@ -217,5 +217,40 @@ function answer(x){ans.innerHTML=x==='банки'?'<b>Как отдать бан
 function chat(){open('Сообщения',`<div class="chat"><div class="bubble"><b>Ирина</b><br>Здравствуйте! Хочу забрать кабачки. Сегодня после 18 удобно?</div><div class="bubble me">Здравствуйте! Да, напишу ориентир ближе к вечеру.</div><div class="bubble"><b>Сергей</b><br>Банки ещё остались?</div></div><div class="chatrow"><input class="field" placeholder="Написать сообщение…"><button class="btn primary">Отправить</button></div>`)}
 function login(){open('Вход',`<p>Номер нужен только для проверки, что вы настоящий человек, а не бот.</p><div class="notice">Номер не показывается другим пользователям. Для общения есть сообщения на сайте.</div><label>Номер телефона</label><input class="field" placeholder="+7 ___ ___-__-__"><button class="btn primary big" style="margin-top:14px" onclick="alert('В рабочей версии сюда придёт SMS-код.')">Получить код</button>`)}
 function accessInfo(){open('Размер текста',`<p>Кнопки A− и A+ закреплены внизу справа. Увеличивается не только текст, но и весь интерфейс.</p>`)}function font(d){if(d===0){document.documentElement.style.setProperty('--scale','1');return}let n=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale'))||1;document.documentElement.style.setProperty('--scale',Math.max(.9,Math.min(1.25,n+d)))}
+
+async function loadLiveListings(){
+  if(!window.komuDb) return;
+  const {data: rows, error} = await window.komuDb
+    .from('listings')
+    .select('id,type,category,title,quantity,description,settlement,district,location_label,pickup_time,status,created_at')
+    .eq('status','active')
+    .order('created_at',{ascending:false});
+
+  if(error){
+    console.warn('Не удалось загрузить объявления из Supabase:', error.message);
+    return;
+  }
+
+  const live = (rows || []).map(x => ({
+    id:x.id,
+    t:x.type,
+    c:x.category,
+    i:x.category==='harvest'?'🥒':x.category==='preserves'?'🫙':x.category==='plants'?'🌱':'📦',
+    n:x.title,
+    q:x.quantity || '',
+    p:x.settlement || '',
+    w:x.pickup_time || 'По договорённости',
+    d:'',
+    x:x.description || ''
+  }));
+
+  if(live.length){
+    data.length = 0;
+    data.push(...live);
+    render();
+  }
+}
+loadLiveListings();
+
 render();
 </script></body></html>
