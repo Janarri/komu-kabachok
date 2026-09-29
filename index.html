@@ -907,6 +907,8 @@ function setupAddressSuggest(inputId,menuId,onPick){
   input.addEventListener('input',()=>{
     const q=input.value.trim();
     input.classList.remove('suggestChosen');
+    if(inputId==='settlementInput')window.selectedLocationCoords=null;
+    if(inputId==='listingSettlement')window.listingSettlementCoords=null;
     clearTimeout(suggestTimers[inputId]);
     if(q.length<2){hide();return}
     suggestTimers[inputId]=setTimeout(async()=>{
