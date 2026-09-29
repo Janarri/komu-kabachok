@@ -1060,56 +1060,75 @@ let currentConversationId=null;
 
 async function request(listingId){
   try{
-    const listing=data.find(x=>x.id===listingId);
+    const listing=data.find(x=>String(x.id)===String(listingId));
+    if(!listing){
+      const {data:remote,error}=await window.komuDb.from('listings')
+        .select('id,owner_id,type,category,title,quantity,description,settlement,location_label,pickup_time,location_lat,location_lng,exchange_want,status')
+        .eq('id',listingId).single();
+      if(error)throw error;
+      if(remote){
+        listing=remote;
+      }
+    }
     if(!listing) throw new Error('Объявление не найдено.');
     const session=await ensureDevSession();
-    if(session.user.id===listing.ownerId){
+    const ownerId=listing.ownerId||listing.owner_id;
+    if(session.user.id===ownerId){
       open('Это ваше объявление','<div class="notice">Нельзя начать переписку с самим собой.</div>');
       return;
     }
+    if(listing.status&&listing.status!=='active'){
+      open('Объявление завершено','<div class="notice">Это объявление уже закрыто.</div>');
+      return;
+    }
 
-    let {data: existing,error}=await window.komuDb
+    const {data:existingRows,error}=await window.komuDb
       .from('conversations')
       .select('id')
       .eq('listing_id',listing.id)
       .or(`participant_one.eq.${session.user.id},participant_two.eq.${session.user.id}`)
-      .maybeSingle();
+      .order('created_at',{ascending:true})
+      .limit(1);
     if(error) throw error;
 
-    let conversation=existing;
+    let conversation=existingRows?.[0]||null;
     if(!conversation){
-      const {data: created,error:createError}=await window.komuDb
+      const {data:created,error:createError}=await window.komuDb
         .from('conversations')
         .insert({
           listing_id:listing.id,
-          listing_title:listing.n,
+          listing_title:listing.n||listing.title||'Объявление',
           participant_one:session.user.id,
-          participant_two:listing.ownerId
+          participant_two:ownerId
         })
         .select('id')
         .single();
       if(createError) throw createError;
       conversation=created;
 
+      const firstMessage=listing.t==='give'||listing.type==='give'
+        ?'Здравствуйте! Хочу забрать. Когда удобно?'
+        :listing.t==='looking'||listing.type==='looking'
+          ?'Здравствуйте! У меня есть то, что вы ищете.'
+          :'Здравствуйте! Хочу предложить обмен.';
       const {error:messageError}=await window.komuDb.from('messages').insert({
         conversation_id:conversation.id,
         sender_id:session.user.id,
-        body:listing.t==='give'?'Здравствуйте! Хочу забрать. Когда удобно?':listing.t==='looking'?'Здравствуйте! У меня есть то, что вы ищете.':'Здравствуйте! Хочу предложить обмен.'
+        body:firstMessage
       });
       if(messageError) throw messageError;
     }
 
-    await openConversation(conversation.id,listing.n);
+    await openConversation(conversation.id,listing.n||listing.title||'Объявление');
   }catch(error){
     console.error('Сообщение:',error);
     open('Не получилось открыть переписку',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div>`);
   }
 }
-
 async function openMessages(){
   try{
     const session=await ensureDevSession();
-    const {data: rows,error}=await window.komuDb
+    const {data:rows,error}=await window.komuDb
       .from('conversations')
       .select('id,listing_id,listing_title,participant_one,participant_two,updated_at')
       .or(`participant_one.eq.${session.user.id},participant_two.eq.${session.user.id}`)
@@ -1117,12 +1136,15 @@ async function openMessages(){
     if(error) throw error;
 
     open('Сообщения',`
-      <div>
+      <div class="conversationList">
         ${(rows||[]).length?(rows||[]).map(x=>`
-          <button class="btn" style="width:100%;text-align:left;margin:0 0 8px" onclick='openConversation("${x.id}",${JSON.stringify(x.listing_title||'Объявление')})'>
+          <button type="button" class="btn conversationBtn" data-conversation-id="${esc(x.id)}" data-listing-title="${esc(x.listing_title||'Объявление')}">
             💬 <b>${esc(x.listing_title||'Объявление')}</b><br><span class="muted">Открыть переписку</span>
           </button>`).join(''):'<div class="notice">Пока нет переписок.</div>'}
       </div>`);
+    document.querySelectorAll('#mbody .conversationBtn').forEach(btn=>{
+      btn.addEventListener('click',()=>openConversation(btn.dataset.conversationId,btn.dataset.listingTitle||'Объявление'));
+    });
   }catch(error){
     open('Сообщения',`<div class="notice">${esc(error.message||'Не удалось загрузить сообщения.')}</div>`);
   }
