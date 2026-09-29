@@ -87,19 +87,24 @@ const data=[
 {t:'looking',c:'looking',i:'🙋',n:'Ищу яблоки',q:'5–10 кг',p:'Новочеркасск',w:'В любое время',d:'рядом с вами',x:'Для варенья. Могу забрать сам.'},
 {t:'exchange',c:'exchange',i:'🔄',n:'Кабачки на яблоки',q:'есть 6 кабачков',p:'Центр',w:'По договорённости',d:'≈ 2 км',x:'Есть кабачки, хотелось бы яблоки.'}];
 let filterNow='all',typeNow='give',timeNow='Сегодня';
+const isTestMode=new URLSearchParams(window.location.search).get('test')==='1';
 function go(id){document.getElementById(id).scrollIntoView({behavior:'smooth'})}function startGive(){go('give');typeSet('give')}
-function render(){
-  let q=document.getElementById('q').value.toLowerCase().trim();
+function getFilteredListings(){
+  const q=(document.getElementById('q')?.value||'').toLowerCase().trim();
   const matchesFilter=x=>{
     if(filterNow==='all') return true;
     if(filterNow==='looking'||filterNow==='exchange') return x.t===filterNow;
     if(filterNow==='jars') return x.c==='preserves'||x.c==='containers';
     return x.c===filterNow;
   };
-  let a=data.filter(x=>matchesFilter(x)&&(!q||[x.n,x.q,x.p,x.x].join(' ').toLowerCase().includes(q)));
+  return data.filter(x=>matchesFilter(x)&&(!q||[x.n,x.q,x.p,x.x].join(' ').toLowerCase().includes(q)));
+}
+function render(){
+  const a=getFilteredListings();
   document.getElementById('cards').innerHTML=a.length?a.map((x,k)=>`<article class="card listing"><div class="topline"><span class="tag">${x.t==='give'?'Отдам':x.t==='looking'?'Ищу':'Обмен'}</span><span class="emoji">${x.i}</span></div><h3>${esc(x.n)}</h3><b>${esc(x.q)}</b><p class="muted">${esc(x.x)}</p><div class="meta"><span>📍 ${esc(x.p||'Место не указано')}</span><span>🕒 ${esc(x.w||'По договорённости')}</span></div><div class="foot"><span class="distance">${esc(x.d||'')}</span><button class="btn primary" onclick="request('${x.id}')">${x.t==='give'?'Хочу забрать':x.t==='looking'?'Откликнуться':'Предложить обмен'}</button></div></article>`).join(''):'<div class="card" style="grid-column:1/-1"><h3>Ничего не нашли</h3><p class="muted">Попробуйте другой запрос или снимите фильтр.</p></div>';
   if(kabachokMapInited) refreshKabachokMapMarkers();
 }
+
 function filter(f,b){filterNow=f;document.querySelectorAll('[data-f]').forEach(x=>x.classList.remove('active'));b.classList.add('active');render()}
 let kabachokMap=null;
 let kabachokMapMarker=null;
@@ -823,20 +828,20 @@ setTimeout(()=>{setupAddressSuggest('listingSettlement','listingSettlementSugges
 
 async function loadLiveListings(){
   if(!window.komuDb) return;
-  const saved=JSON.parse(localStorage.getItem('komuKabachokLocation')||'null')||{region:'Ростовская область',settlement:'Новочеркасск',district:''};
+  const saved=JSON.parse(localStorage.getItem('komuKabachokLocation')||'null')||{region:'Ростовская область',settlement:'Новочеркасск',district:'',lat:null,lng:null};
+  const region=isTestMode?'Ростовская область':saved.region;
+  const settlement=isTestMode?'Новочеркасск':saved.settlement;
   const {data: rows, error} = await window.komuDb
     .from('listings')
     .select('id,owner_id,type,category,title,quantity,description,region,settlement,district,landmark,location_label,location_lat,location_lng,pickup_time,status,created_at')
     .eq('status','active')
-    .eq('region',saved.region)
-    .eq('settlement',saved.settlement)
+    .eq('region',region)
+    .eq('settlement',settlement)
     .order('created_at',{ascending:false});
-
   if(error){
     console.warn('Не удалось загрузить объявления из Supabase:', error.message);
     return;
   }
-
   const live=(rows||[]).map(x=>({
     id:x.id,ownerId:x.owner_id,t:x.type,c:x.category,
     i:x.category==='harvest'?'🥒':x.category==='preserves'?'🫙':x.category==='plants'?'🌱':'📦',
@@ -846,6 +851,12 @@ async function loadLiveListings(){
   }));
   data.length=0;
   data.push(...live);
+  if(isTestMode){
+    const current=document.getElementById('currentLocation');
+    const sub=document.getElementById('locationSub');
+    if(current) current.textContent='Новочеркасск';
+    if(sub) sub.textContent='Режим проверки: тестовые объявления.';
+  }
   render();
 }
 loadLiveListings();
