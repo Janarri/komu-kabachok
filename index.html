@@ -108,13 +108,47 @@ let kabachokMapRequest=0;
 async function geocodePlace(query){
   if(!window.ymaps || !query) return null;
   try{
-    const res=await window.ymaps.geocode(query,{results:1});
-    const first=res.geoObjects.get(0);
-    if(!first) return null;
-    const coords=first.geometry.getCoordinates();
-    return Array.isArray(coords)&&coords.length===2?coords:null;
+    const res=await window.ymaps.geocode(query,{results:5});
+    for(let i=0;i<res.geoObjects.getLength();i++){
+      const first=res.geoObjects.get(i);
+      const coords=first?.geometry?.getCoordinates?.();
+      if(Array.isArray(coords)&&coords.length===2) return coords;
+    }
   }catch(error){
     console.warn('Яндекс.Карты: не удалось найти место',error);
+  }
+  return null;
+}
+
+function getBrowserCoordinates(){
+  return new Promise(resolve=>{
+    if(!navigator.geolocation){resolve(null);return}
+    navigator.geolocation.getCurrentPosition(
+      pos=>resolve([pos.coords.latitude,pos.coords.longitude]),
+      ()=>resolve(null),
+      {enableHighAccuracy:false,timeout:7000,maximumAge:300000}
+    );
+  });
+}
+
+async function reverseGeocodeToLocation(coords){
+  if(!window.ymaps||!Array.isArray(coords)) return null;
+  try{
+    const res=await window.ymaps.geocode(coords,{results:1});
+    const first=res.geoObjects.get(0);
+    if(!first) return null;
+    const address=first.properties.get('text')||first.properties.get('name')||'';
+    if(!address) return null;
+    const suggestions=await requestAddressSuggestions(address);
+    const picked=suggestions.find(s=>localityFromSuggestion(s));
+    if(!picked) return null;
+    return {
+      region:regionFromSuggestion(picked),
+      settlement:localityFromSuggestion(picked),
+      district:districtFromSuggestion(picked)
+    };
+  }catch(error){
+    console.warn('Не удалось определить город по геопозиции:',error);
     return null;
   }
 }
@@ -129,18 +163,28 @@ async function refreshKabachokMap(){
   const req=++kabachokMapRequest;
   const saved=getSavedLocation();
   const query=[saved.settlement,saved.region].filter(Boolean).join(', ');
-  const center=await geocodePlace(query);
+  let center=await geocodePlace(query);
+  let usedBrowserLocation=false;
+  if(!center && !saved.settlement){
+    center=await getBrowserCoordinates();
+    usedBrowserLocation=!!center;
+  }
   if(req!==kabachokMapRequest) return;
-  const target=center||[55.75,37.61];
-  kabachokMap.setCenter(target, center?11:6,{duration:250});
+  const target=center||[61,105];
+  const zoom=center?11:3;
+  kabachokMap.setCenter(target,zoom,{duration:250});
   if(kabachokMapMarker) kabachokMap.geoObjects.remove(kabachokMapMarker);
-  kabachokMapMarker=new ymaps.Placemark(target,{
-    hintContent:saved.settlement||'Выбранное место',
-    balloonContent:'<b>'+esc(saved.settlement||'Выбранное место')+'</b><br>Здесь можно смотреть объявления поблизости.'
-  },{
-    preset:'islands#greenDotIcon'
-  });
-  kabachokMap.geoObjects.add(kabachokMapMarker);
+  if(center){
+    kabachokMapMarker=new ymaps.Placemark(target,{
+      hintContent:saved.settlement||(usedBrowserLocation?'Ваше местоположение':'Выбранное место'),
+      balloonContent:saved.settlement
+        ? '<b>'+esc(saved.settlement)+'</b><br>Регион: '+esc(saved.region||'')+'<br>Примерный центр выбранного места.'
+        : (usedBrowserLocation ? '<b>Ваше местоположение</b><br>Карта центрирована по геопозиции браузера.' : '<b>Выбранное место</b>')
+    },{
+      preset:'islands#greenDotIcon'
+    });
+    kabachokMap.geoObjects.add(kabachokMapMarker);
+  }
   refreshKabachokMapMarkers();
 }
 
@@ -216,9 +260,16 @@ async function initKabachokMap(){
     return;
   }
   await new Promise(resolve=>window.ymaps.ready(resolve));
+  const saved=getSavedLocation();
+  let initialCenter=await geocodePlace([saved.settlement,saved.region].filter(Boolean).join(', '));
+  let initialZoom=initialCenter?11:3;
+  if(!initialCenter && !saved.settlement){
+    initialCenter=await getBrowserCoordinates();
+    initialZoom=initialCenter?11:3;
+  }
   kabachokMap=new ymaps.Map('mapCanvas',{
-    center:[55.75,37.61],
-    zoom:6,
+    center:initialCenter||[61,105],
+    zoom:initialZoom,
     controls:['zoomControl','fullscreenControl']
   });
   kabachokMapInited=true;
@@ -449,6 +500,8 @@ function chooseLocation(){
     <input id="regionSelect" class="field" value="${esc(saved.region||'')}" placeholder="Подставится после выбора города">
     <label>Район <span class="muted">(необязательно)</span></label>
     <input id="districtInput" class="field" value="${esc(saved.district||'')}" placeholder="Например: Центр, Хотунок">
+    <button class="btn" style="margin-top:10px" onclick="detectMyLocation()">📍 Определить автоматически</button>
+    <div id="locationDetectStatus" class="muted" style="margin-top:7px"></div>
     <p class="muted" style="margin-top:8px">Можно выбрать только населённый пункт. Точный домашний адрес не нужен.</p>
     <button class="btn primary big" style="margin-top:10px" onclick="saveLocation()">Показывать объявления здесь</button>
   `);
@@ -458,6 +511,27 @@ function chooseLocation(){
     if(region) document.getElementById('regionSelect').value=region;
     if(district && !document.getElementById('districtInput').value) document.getElementById('districtInput').value=district;
   });
+}
+async function detectMyLocation(){
+  const status=document.getElementById('locationDetectStatus');
+  if(status) status.textContent='Определяем местоположение…';
+  const coords=await getBrowserCoordinates();
+  if(!coords){
+    if(status) status.textContent='Не удалось получить геопозицию. Проверьте разрешение на доступ к местоположению.';
+    return;
+  }
+  const found=await reverseGeocodeToLocation(coords);
+  if(!found?.settlement||!found?.region){
+    if(status) status.textContent='Не удалось определить населённый пункт. Его можно выбрать вручную.';
+    return;
+  }
+  const settlementInput=document.getElementById('settlementInput');
+  const regionInput=document.getElementById('regionSelect');
+  const districtInput=document.getElementById('districtInput');
+  if(settlementInput){settlementInput.value=found.settlement;settlementInput.classList.add('suggestChosen');}
+  if(regionInput)regionInput.value=found.region;
+  if(districtInput&&found.district&&!districtInput.value)districtInput.value=found.district;
+  if(status) status.textContent='✓ Нашли: '+found.settlement+(found.district?' · '+found.district:'');
 }
 async function saveLocation(){
   const region=(document.getElementById('regionSelect').value||'').trim();
