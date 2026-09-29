@@ -887,6 +887,15 @@ function localityFromSuggestion(s){
   return d.city || d.settlement || '';
 }
 function regionFromSuggestion(s){ const d=s?.data||{}; return d.region_with_type || d.region || ''; }
+function normalizeRegionName(value){
+  return String(value||'')
+    .toLowerCase()
+    .replace(/ё/g,'е')
+    .replace(/\b(область|обл\.|край|республика|респ\.|автономная\s+область|ао|автономный\s+округ|аутономный\s+округ|округ|г\.|город)\b/g,' ')
+    .replace(/[^а-яa-z0-9]+/g,' ')
+    .trim()
+    .replace(/\s+/g,' ');
+}
 function districtFromSuggestion(s){
   const d=s?.data||{};
   return d.city_district || d.area || '';
@@ -1301,10 +1310,16 @@ async function loadLiveListings(){
     .from('listings')
     .select('id,owner_id,type,category,title,quantity,description,region,settlement,district,landmark,location_label,location_lat,location_lng,pickup_time,status,created_at,updated_at,exchange_give,exchange_want')
     .eq('status','active')
-    .ilike('region',region.trim())
     .ilike('settlement',settlement.trim())
     .order('created_at',{ascending:false});
   let {data: rows,error}=await queryBuilder;
+  const wantedRegion=normalizeRegionName(region);
+  if(wantedRegion){
+    rows=(rows||[]).filter(x=>{
+      const rowRegion=normalizeRegionName(x.region);
+      return rowRegion===wantedRegion || rowRegion.startsWith(wantedRegion+' ') || wantedRegion.startsWith(rowRegion+' ');
+    });
+  }
   if(error){
     console.warn('Не удалось загрузить объявления из Supabase:', error.message);
     const sub=document.getElementById('locationSub');
