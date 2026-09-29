@@ -383,6 +383,38 @@ async function openMessages(){
   }
 }
 
+let messageChannel=null;
+
+async function subscribeToConversation(conversationId){
+  if(messageChannel){
+    try{ await window.komuDb.removeChannel(messageChannel); }catch(e){}
+    messageChannel=null;
+  }
+  const session=await ensureDevSession();
+  messageChannel=window.komuDb
+    .channel('messages-'+conversationId)
+    .on('postgres_changes',{
+      event:'INSERT',
+      schema:'public',
+      table:'messages',
+      filter:'conversation_id=eq.'+conversationId
+    },payload=>{
+      const m=payload.new;
+      const box=document.getElementById('liveChat');
+      if(!box || !m) return;
+      const empty=box.querySelector('.muted');
+      if(empty) empty.remove();
+      const el=document.createElement('div');
+      el.className='bubble'+(m.sender_id===session.user.id?' me':'');
+      el.textContent=m.body;
+      box.appendChild(el);
+      box.scrollTop=box.scrollHeight;
+    })
+    .subscribe(status=>{
+      if(status!=='SUBSCRIBED') console.log('Messages realtime:',status);
+    });
+}
+
 async function openConversation(conversationId,title){
   try{
     const session=await ensureDevSession();
@@ -396,11 +428,14 @@ async function openConversation(conversationId,title){
 
     open('Сообщения',`
       <div class="muted" style="margin-bottom:10px">По объявлению: <b>${esc(title||'')}</b></div>
-      <div id="liveChat" class="chat">
+      <div id="liveChat" class="chat" style="max-height:360px;overflow:auto">
         ${(rows||[]).map(m=>`<div class="bubble ${m.sender_id===session.user.id?'me':''}">${esc(m.body)}</div>`).join('')||'<div class="muted">Сообщений пока нет.</div>'}
       </div>
       <div class="chatrow"><input id="messageInput" class="field" placeholder="Написать сообщение…"><button class="btn primary" onclick="sendMessage()">Отправить</button></div>
     `);
+    const box=document.getElementById('liveChat');
+    if(box) box.scrollTop=box.scrollHeight;
+    await subscribeToConversation(conversationId);
   }catch(error){
     open('Сообщения',`<div class="notice">${esc(error.message||'Не удалось открыть переписку.')}</div>`);
   }
