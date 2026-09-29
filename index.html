@@ -225,8 +225,20 @@ async function openListingMapPicker(){
   const saved=getSavedLocation();
   const currentSettlement=(document.getElementById('listingSettlement')?.value||saved.settlement||'').trim();
   const currentRegion=(document.getElementById('listingRegion')?.value||saved.region||'').trim();
+  let center=Array.isArray(window.listingSettlementCoords)?window.listingSettlementCoords:null;
   const query=[currentSettlement,currentRegion].filter(Boolean).join(', ');
-  const center=await geocodePlace(query)||[55.75,37.61];
+  if(!center && query) center=await geocodePlace(query);
+  if(!center && currentSettlement){
+    try{
+      const suggestions=await requestAddressSuggestions(query||currentSettlement);
+      const picked=suggestions.find(s=>localityFromSuggestion(s)&&coordsFromSuggestion(s));
+      if(picked) center=coordsFromSuggestion(picked);
+    }catch(e){}
+  }
+  if(!center){
+    center=await getBrowserCoordinates();
+  }
+  if(!center) center=[55.75,37.61];
   listingPickerMap=new ymaps.Map('listingPickerMap',{center:center,zoom:11,controls:['zoomControl','fullscreenControl']});
   listingPickerMap.events.add('click',e=>{
     const coords=e.get('coords');
@@ -354,7 +366,7 @@ async function publish(){
     open('Не получилось опубликовать',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div><p>Сейчас сайт использует временный режим входа без SMS. В Supabase нужно один раз включить <b>Anonymous Sign-Ins</b>.</p><p class="muted">После этого кнопку публикации можно будет проверить прямо на сайте.</p>`);
   }
 }
-function resetForm(){done.style.display='none';['item','qty','comment','listingRegion','listingSettlement','place','landmark','custom'].forEach(x=>{const el=document.getElementById(x);if(el)el.value=''});window.listingLat=null;window.listingLng=null;const status=document.getElementById('listingMapStatus');if(status)status.textContent='Точка на карте не выбрана.';if(document.getElementById('categorySelect'))document.getElementById('categorySelect').value='harvest';next(1)}
+function resetForm(){done.style.display='none';['item','qty','comment','listingRegion','listingSettlement','place','landmark','custom'].forEach(x=>{const el=document.getElementById(x);if(el)el.value=''});window.listingLat=null;window.listingLng=null;window.listingSettlementCoords=null;const status=document.getElementById('listingMapStatus');if(status)status.textContent='Точка на карте не выбрана.';if(document.getElementById('categorySelect'))document.getElementById('categorySelect').value='harvest';next(1)}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function open(t,b){mtitle.textContent=t;mbody.innerHTML=b;modalbg.classList.add('show')}function closeM(){modalbg.classList.remove('show')}
 
@@ -787,7 +799,7 @@ async function login(){
 }
 function accessInfo(){open('Размер текста',`<p>Кнопки A− и A+ закреплены внизу справа. Увеличивается не только текст, но и весь интерфейс.</p>`)}function font(d){if(d===0){document.documentElement.style.setProperty('--scale','1');return}let n=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale'))||1;document.documentElement.style.setProperty('--scale',Math.max(.9,Math.min(1.25,n+d)))}
 
-setTimeout(()=>{setupAddressSuggest('listingSettlement','listingSettlementSuggest',s=>{const region=regionFromSuggestion(s);if(region) document.getElementById('listingRegion').value=region;});},0);
+setTimeout(()=>{setupAddressSuggest('listingSettlement','listingSettlementSuggest',s=>{const region=regionFromSuggestion(s);if(region) document.getElementById('listingRegion').value=region;window.listingSettlementCoords=coordsFromSuggestion(s);});},0);
 
 async function loadLiveListings(){
   if(!window.komuDb) return;
