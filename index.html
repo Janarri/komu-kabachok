@@ -81,7 +81,7 @@ const data=[
 {t:'looking',c:'looking',i:'🙋',n:'Ищу яблоки',q:'5–10 кг',p:'Новочеркасск',w:'В любое время',d:'рядом с вами',x:'Для варенья. Могу забрать сам.'},
 {t:'exchange',c:'exchange',i:'🔄',n:'Кабачки на яблоки',q:'есть 6 кабачков',p:'Центр',w:'По договорённости',d:'≈ 2 км',x:'Есть кабачки, хотелось бы яблоки.'}];
 let filterNow='all',typeNow='give',timeNow='Сегодня';
-const isTestMode=new URLSearchParams(window.location.search).get('test')==='1';
+let isTestMode=new URLSearchParams(window.location.search).get('test')==='1';
 function go(id){document.getElementById(id).scrollIntoView({behavior:'smooth'})}function startGive(){go('give');typeSet('give')}
 function getFilteredListings(){
   const q=(document.getElementById('q')?.value||'').toLowerCase().trim();
@@ -609,6 +609,14 @@ async function saveLocation(){
   const selected=Array.isArray(window.selectedLocationCoords)?window.selectedLocationCoords:[null,null];
   const saved={region,settlement,district,lat:selected[0],lng:selected[1]};
   localStorage.setItem('komuKabachokLocation',JSON.stringify(saved));
+  if(isTestMode){
+    isTestMode=false;
+    try{
+      const cleanUrl=new URL(window.location.href);
+      cleanUrl.searchParams.delete('test');
+      window.history.replaceState({},'',cleanUrl.pathname+cleanUrl.search+cleanUrl.hash);
+    }catch(e){console.warn('Не удалось убрать режим проверки из адреса страницы:',e);}
+  }
   document.getElementById('heroLocation').textContent=settlement+(district?' · '+district:'');
   document.getElementById('locationSub').textContent='Объявления из выбранного места.';
   closeM();
