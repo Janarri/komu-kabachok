@@ -886,7 +886,7 @@ function localityFromSuggestion(s){
   const d=s?.data||{};
   return d.city || d.settlement || '';
 }
-function regionFromSuggestion(s){ return s?.data?.region || ''; }
+function regionFromSuggestion(s){ const d=s?.data||{}; return d.region_with_type || d.region || ''; }
 function districtFromSuggestion(s){
   const d=s?.data||{};
   return d.city_district || d.area || '';
@@ -975,9 +975,12 @@ function chooseLocation(){
     const region=regionFromSuggestion(s);
     const district=districtFromSuggestion(s);
     const coords=coordsFromSuggestion(s);
+    const settlement=localityFromSuggestion(s);
+    if(settlement) document.getElementById('settlementInput').value=settlement;
     if(region) document.getElementById('regionSelect').value=region;
     if(district && !document.getElementById('districtInput').value) document.getElementById('districtInput').value=district;
     window.selectedLocationCoords=coords;
+    window.selectedLocationData={region,settlement,district,coords};
   });
 }
 async function detectMyLocation(){
@@ -1003,12 +1006,13 @@ async function detectMyLocation(){
   if(status) status.textContent='✓ Нашли: '+found.settlement+(found.district?' · '+found.district:'');
 }
 async function saveLocation(){
-  const region=(document.getElementById('regionSelect').value||'').trim();
-  const settlement=(document.getElementById('settlementInput').value||'').trim();
-  const district=(document.getElementById('districtInput').value||'').trim();
+  const selected=window.selectedLocationData||{};
+  const region=(selected.region||document.getElementById('regionSelect').value||'').trim();
+  const settlement=(selected.settlement||document.getElementById('settlementInput').value||'').trim();
+  const district=(selected.district||document.getElementById('districtInput').value||'').trim();
   if(!region||!settlement){alert('Выберите город, посёлок или село из подсказок или укажите регион и место вручную.');return}
-  const selected=Array.isArray(window.selectedLocationCoords)?window.selectedLocationCoords:[null,null];
-  const saved={region,settlement,district,lat:selected[0],lng:selected[1]};
+  const selectedCoords=Array.isArray(window.selectedLocationCoords)?window.selectedLocationCoords:[null,null];
+  const saved={region,settlement,district,lat:selectedCoords[0],lng:selectedCoords[1]};
   localStorage.setItem('komuKabachokLocation',JSON.stringify(saved));
   if(isTestMode){
     isTestMode=false;
@@ -1292,13 +1296,14 @@ async function loadLiveListings(){
     render();
     return;
   }
-  const {data: rows, error} = await window.komuDb
+  let queryBuilder=window.komuDb
     .from('listings')
     .select('id,owner_id,type,category,title,quantity,description,region,settlement,district,landmark,location_label,location_lat,location_lng,pickup_time,status,created_at,updated_at,exchange_give,exchange_want')
     .eq('status','active')
-    .eq('region',region)
-    .eq('settlement',settlement)
+    .ilike('region',region.trim())
+    .ilike('settlement',settlement.trim())
     .order('created_at',{ascending:false});
+  let {data: rows,error}=await queryBuilder;
   if(error){
     console.warn('Не удалось загрузить объявления из Supabase:', error.message);
     const sub=document.getElementById('locationSub');
