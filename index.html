@@ -276,8 +276,8 @@ async function openListingMapPicker(){
 
 function applyListingMapPoint(){
   if(!listingPickerCoords){alert('Сначала нажмите на карту и выберите примерное место.');return;}
-  window.listingLat=Number(listingPickerCoords[0]);
-  window.listingLng=Number(listingPickerCoords[1]);
+  window.listingLat=Math.round(Number(listingPickerCoords[0])*1000)/1000;
+  window.listingLng=Math.round(Number(listingPickerCoords[1])*1000)/1000;
   const status=document.getElementById('listingMapStatus');
   if(status)status.textContent='✓ Примерное место на карте выбрано.';
   closeM();
