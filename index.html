@@ -162,8 +162,9 @@ async function refreshKabachokMap(){
   if(!kabachokMapInited || !kabachokMap) return;
   const req=++kabachokMapRequest;
   const saved=getSavedLocation();
+  let center=Number.isFinite(Number(saved.lat))&&Number.isFinite(Number(saved.lng))?[Number(saved.lat),Number(saved.lng)]:null;
   const query=[saved.settlement,saved.region].filter(Boolean).join(', ');
-  let center=await geocodePlace(query);
+  if(!center) center=await geocodePlace(query);
   let usedBrowserLocation=false;
   if(!center && !saved.settlement){
     center=await getBrowserCoordinates();
@@ -261,7 +262,8 @@ async function initKabachokMap(){
   }
   await new Promise(resolve=>window.ymaps.ready(resolve));
   const saved=getSavedLocation();
-  let initialCenter=await geocodePlace([saved.settlement,saved.region].filter(Boolean).join(', '));
+  let initialCenter=Number.isFinite(Number(saved.lat))&&Number.isFinite(Number(saved.lng))?[Number(saved.lat),Number(saved.lng)]:null;
+  if(!initialCenter) initialCenter=await geocodePlace([saved.settlement,saved.region].filter(Boolean).join(', '));
   let initialZoom=initialCenter?11:3;
   if(!initialCenter && !saved.settlement){
     initialCenter=await getBrowserCoordinates();
@@ -415,8 +417,12 @@ async function completeListing(id){
 }
 
 function getSavedLocation(){
-  try{return JSON.parse(localStorage.getItem('komuKabachokLocation')||'null')||{region:'Ростовская область',settlement:'Новочеркасск',district:''}}
-  catch(e){return {region:'Ростовская область',settlement:'Новочеркасск',district:''}}
+  try{return JSON.parse(localStorage.getItem('komuKabachokLocation')||'null')||{region:'Ростовская область',settlement:'Новочеркасск',district:'',lat:null,lng:null}}
+  catch(e){return {region:'Ростовская область',settlement:'Новочеркасск',district:'',lat:null,lng:null}}
+}
+function coordsFromSuggestion(s){
+  const lat=Number(s?.data?.geo_lat),lng=Number(s?.data?.geo_lon);
+  return Number.isFinite(lat)&&Number.isFinite(lng)?[lat,lng]:null;
 }
 function localityFromSuggestion(s){
   const d=s?.data||{};
@@ -508,8 +514,10 @@ function chooseLocation(){
   setupAddressSuggest('settlementInput','settlementSuggest',s=>{
     const region=regionFromSuggestion(s);
     const district=districtFromSuggestion(s);
+    const coords=coordsFromSuggestion(s);
     if(region) document.getElementById('regionSelect').value=region;
     if(district && !document.getElementById('districtInput').value) document.getElementById('districtInput').value=district;
+    window.selectedLocationCoords=coords;
   });
 }
 async function detectMyLocation(){
@@ -531,6 +539,7 @@ async function detectMyLocation(){
   if(settlementInput){settlementInput.value=found.settlement;settlementInput.classList.add('suggestChosen');}
   if(regionInput)regionInput.value=found.region;
   if(districtInput&&found.district&&!districtInput.value)districtInput.value=found.district;
+  window.selectedLocationCoords=[coords[0],coords[1]];
   if(status) status.textContent='✓ Нашли: '+found.settlement+(found.district?' · '+found.district:'');
 }
 async function saveLocation(){
@@ -538,7 +547,8 @@ async function saveLocation(){
   const settlement=(document.getElementById('settlementInput').value||'').trim();
   const district=(document.getElementById('districtInput').value||'').trim();
   if(!region||!settlement){alert('Выберите город, посёлок или село из подсказок или укажите регион и место вручную.');return}
-  const saved={region,settlement,district};
+  const selected=Array.isArray(window.selectedLocationCoords)?window.selectedLocationCoords:[null,null];
+  const saved={region,settlement,district,lat:selected[0],lng:selected[1]};
   localStorage.setItem('komuKabachokLocation',JSON.stringify(saved));
   document.getElementById('currentLocation').textContent=settlement+(district?' · '+district:'');
   document.getElementById('locationSub').textContent='Объявления из выбранного места.';
