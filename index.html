@@ -27,7 +27,7 @@
   </div>
   <button class="btn" onclick="chooseLocation()">Изменить место</button>
 </div><div class="toggle"><button id="lb" class="active" onclick="view('list')">Список</button><button id="mb" onclick="view('map')">Карта</button></div></div><div class="wrap listingWrap"><div class="modebar"><button class="chip active" data-f="all" onclick="filter('all',this)">Все</button><button class="chip" data-f="harvest" onclick="filter('harvest',this)">🥕 Урожай</button><button class="chip" data-f="plants" onclick="filter('plants',this)">🌱 Рассада</button><button class="chip" data-f="jars" onclick="filter('jars',this)">🫙 Закрутки и тара</button><button class="chip" data-f="looking" onclick="filter('looking',this)">🙋 Ищут</button><button class="chip" data-f="exchange" onclick="filter('exchange',this)">🔄 Обмен</button></div><div class="search"><input id="q" class="field" placeholder="Например: яблоки, банки, рассада…" oninput="render()"><button class="btn" onclick="q.value='';render()">Очистить</button></div><div id="cards" class="cards"></div><div id="map" class="map"><div class="roads"></div><i class="pin p1"></i><i class="pin p2"></i><i class="pin p3"></i><i class="pin p4"></i><div class="mapbox"><b>Карта выбранного места</b><br><span class="muted">В рабочей версии сюда подключается Яндекс Карта. Точная домашняя точка публично не показывается.</span></div><div class="mapnote">≈ место встречи · не точный адрес</div></div></div></div></section>
-<section id="give"><div class="wrap"><div class="sectionHead"><div><h2>Отдать или найти</h2></div></div><div class="modebar"><button id="tGive" class="chip active" onclick="typeSet('give')">🌱 Отдам</button><button id="tLook" class="chip" onclick="typeSet('looking')">🙋 Ищу</button><button id="tEx" class="chip" onclick="typeSet('exchange')">🔄 Обменяю</button></div><div class="formgrid"><div class="card formarea"><div class="steps"><i id="st1" class="step on"></i><i id="st2" class="step"></i><i id="st3" class="step"></i></div><div id="fs1"><h3 id="ftitle">Что отдаёте?</h3><label>Что это?</label><input id="item" class="field" placeholder="Например: кабачки"><label>Примерное количество</label><input id="qty" class="field" placeholder="8 штук, 5 кг, два ведра…"><label>Комментарий <span class="muted">(необязательно)</span></label><textarea id="comment" class="field" placeholder="Пишите по-человечески. Например: «Урожай в этом году решил уничтожить нашу семью…»"></textarea><div class="photoBox">
+<section id="give"><div class="wrap"><div class="sectionHead"><div><h2>Отдать или найти</h2></div></div><div class="modebar"><button id="tGive" class="chip active" onclick="typeSet('give')">🌱 Отдам</button><button id="tLook" class="chip" onclick="typeSet('looking')">🙋 Ищу</button><button id="tEx" class="chip" onclick="typeSet('exchange')">🔄 Обменяю</button></div><div class="formgrid"><div class="card formarea"><div class="steps"><i id="st1" class="step on"></i><i id="st2" class="step"></i><i id="st3" class="step"></i></div><div id="fs1"><h3 id="ftitle">Что отдаёте?</h3><label>Что это?</label><input id="item" class="field" placeholder="Например: кабачки"><label>Примерное количество</label><input id="qty" class="field" placeholder="8 штук, 5 кг, два ведра…"><label>Что это за категория?</label><select id="categorySelect" class="field"><option value="harvest">🥕 Урожай</option><option value="plants">🌱 Рассада и растения</option><option value="preserves">🫙 Закрутки и банки</option><option value="containers">📦 Тара и горшки</option></select><label>Комментарий <span class="muted">(необязательно)</span></label><textarea id="comment" class="field" placeholder="Пишите по-человечески. Например: «Урожай в этом году решил уничтожить нашу семью…»"></textarea><div class="photoBox">
   <div class="photoTitle"><b>📷 Добавить фото</b> <span class="muted">(необязательно)</span></div>
   <p class="photoHint">Фото помогает понять, что именно отдаёте. Можно публиковать объявление и без фотографии.</p>
   <input id="photos" type="file" accept="image/*" multiple hidden onchange="previewPhotos()">
@@ -35,7 +35,7 @@
   <div id="photoPreview" class="photoPreview"></div>
 </div>
 <button class="btn primary big" onclick="next(2)">Дальше</button></div><div id="fs2" style="display:none"><h3>Где и когда?</h3>
-<div class="safetyInline"><b>🔒 Не обязательно указывать домашний адрес.</b> Можно указать район, улицу, ориентир или место встречи. Точную точку при желании уточните в сообщениях.</div><label>Где забрать?</label><div class="exchangeHint" style="margin-bottom:8px">Можно указать район, улицу или ориентир. Домашний адрес указывать необязательно.</div><div style="display:grid;grid-template-columns:1fr auto;gap:7px"><input id="place" class="field" placeholder="Улица, район или ориентир"><button class="btn" onclick="alert('В рабочей версии здесь откроется Яндекс Карта: можно найти место по адресу или поставить точку.')">📍 Выбрать место</button></div><label>Как вас найти? <span class="muted">(необязательно)</span></label><input id="landmark" class="field" placeholder="Например: у синего гаража, вход со двора"><label>Когда?</label><div class="modebar" id="times"><button class="chip active" onclick="time('Сегодня',this)">Сегодня</button><button class="chip" onclick="time('Завтра',this)">Завтра</button><button class="chip" onclick="time('В любое время',this)">В любое время</button><button class="chip" onclick="time('Свой вариант',this)">Свой вариант</button></div><input id="custom" class="field" style="display:none" placeholder="Суббота 10:00–14:00 или будни после 19:00"><div style="display:flex;gap:7px;margin-top:15px"><button class="btn" onclick="next(1)">Назад</button><button class="btn primary big" onclick="next(3)">Дальше</button></div></div><div id="fs3" style="display:none"><h3>Посмотрите, всё ли правильно</h3><div id="review" class="review"></div><div class="notice">🔒 Точный домашний адрес публично не показываем. Можно указать район, ориентир или место встречи.</div><div style="display:flex;gap:7px"><button class="btn" onclick="next(2)">Изменить</button><button class="btn primary big" onclick="publish()">Опубликовать объявление</button></div></div><div id="done" style="display:none"><div class="notice ok"><h3 style="margin:0 0 5px">Готово! 🌱</h3>Ваше объявление опубликовано.</div><button class="btn primary" onclick="openMyListings()">Мои объявления</button> <button class="btn" onclick="resetForm()">Создать ещё одно</button></div></div><div class="help"><h3>Не знаете, что написать?</h3><p class="muted">Пример</p><div class="example"><b>Отдам кабачки</b><br>Урожай в этом году решил уничтожить нашу семью 😄 Есть примерно 8 молодых кабачков. Забрать сегодня после 18:00, район Хотунок.</div><p class="assistantNote">Помощник тоже может подсказать, куда нажать.</p><button class="btn" onclick="ai()">🤖 Помочь разобраться</button></div></div></div></section>
+<div class="safetyInline"><b>🔒 Не обязательно указывать домашний адрес.</b> Можно указать район, улицу, ориентир или место встречи. Точную точку при желании уточните в сообщениях.</div><label>Регион</label><input id="listingRegion" class="field" placeholder="Например: Ростовская область"><label>Город, посёлок или село</label><input id="listingSettlement" class="field" placeholder="Например: Новочеркасск, Багаевская, село А"><label>Где забрать? <span class="muted">(необязательно)</span></label><div class="exchangeHint" style="margin-bottom:8px">Можно указать район, улицу или ориентир. Домашний адрес указывать необязательно.</div><input id="place" class="field" placeholder="Например: район Центр, ТЦ Арбат, улица Мира"><label>Дополнительный ориентир <span class="muted">(необязательно)</span></label><input id="landmark" class="field" placeholder="Например: у синего гаража, вход со двора"><label>Когда?</label><div class="modebar" id="times"><button class="chip active" onclick="time('Сегодня',this)">Сегодня</button><button class="chip" onclick="time('Завтра',this)">Завтра</button><button class="chip" onclick="time('В любое время',this)">В любое время</button><button class="chip" onclick="time('Свой вариант',this)">Свой вариант</button></div><input id="custom" class="field" style="display:none" placeholder="Суббота 10:00–14:00 или будни после 19:00"><div style="display:flex;gap:7px;margin-top:15px"><button class="btn" onclick="next(1)">Назад</button><button class="btn primary big" onclick="next(3)">Дальше</button></div></div><div id="fs3" style="display:none"><h3>Посмотрите, всё ли правильно</h3><div id="review" class="review"></div><div class="notice">🔒 Точный домашний адрес публично не показываем. Можно указать район, ориентир или место встречи.</div><div style="display:flex;gap:7px"><button class="btn" onclick="next(2)">Изменить</button><button class="btn primary big" onclick="publish()">Опубликовать объявление</button></div></div><div id="done" style="display:none"><div class="notice ok"><h3 style="margin:0 0 5px">Готово! 🌱</h3>Ваше объявление опубликовано.</div><button class="btn primary" onclick="openMyListings()">Мои объявления</button> <button class="btn" onclick="resetForm()">Создать ещё одно</button></div></div><div class="help"><h3>Не знаете, что написать?</h3><p class="muted">Пример</p><div class="example"><b>Отдам кабачки</b><br>Урожай в этом году решил уничтожить нашу семью 😄 Есть примерно 8 молодых кабачков. Забрать сегодня после 18:00, район Хотунок.</div><p class="assistantNote">Помощник тоже может подсказать, куда нажать.</p><button class="btn" onclick="ai()">🤖 Помочь разобраться</button></div></div></div></section>
 
 <section id="helpSection"><div class="wrap"><div class="card helpMain" style="background:#f0f5e8">
   <div class="helpMainHead">
@@ -102,7 +102,7 @@ function filter(f,b){filterNow=f;document.querySelectorAll('[data-f]').forEach(x
 function view(v){document.getElementById('cards').style.display=v==='list'?'grid':'none';document.getElementById('map').style.display=v==='map'?'block':'none';document.getElementById('lb').classList.toggle('active',v==='list');document.getElementById('mb').classList.toggle('active',v==='map')}
 function typeSet(t){typeNow=t;['tGive','tLook','tEx'].forEach(x=>document.getElementById(x).classList.remove('active'));document.getElementById(t==='give'?'tGive':t==='looking'?'tLook':'tEx').classList.add('active');document.getElementById('ftitle').textContent=t==='give'?'Что отдаёте?':t==='looking'?'Что ищете?':'Что отдаёте и что хотите получить?'}
 function time(t,b){timeNow=t;document.querySelectorAll('#times .chip').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('custom').style.display=t==='Свой вариант'?'block':'none'}
-function next(n){if(n===2&&(!item.value.trim()||!qty.value.trim())){alert('Напишите, что это и примерное количество.');return}if(n===3){let when=timeNow==='Свой вариант'?(custom.value.trim()||'По договорённости'):timeNow;review.innerHTML=`<b>${typeNow==='give'?'Отдам':typeNow==='looking'?'Ищу':'Обменяю'}: ${esc(item.value)}</b><p><b>${esc(qty.value)}</b></p><p>${esc(comment.value)||'Без комментария'}</p><span>📍 ${esc(place.value||'Новочеркасск')}${landmark.value?' · '+esc(landmark.value):''}</span><br><span>🕒 ${esc(when)}</span>`}['fs1','fs2','fs3'].forEach((x,i)=>document.getElementById(x).style.display=i===n-1?'block':'none');['st1','st2','st3'].forEach((x,i)=>document.getElementById(x).classList.toggle('on',i<n));go('give')}
+function next(n){if(n===2&&(!item.value.trim()||!qty.value.trim())){alert('Напишите, что это и примерное количество.');return}if(n===3){let when=timeNow==='Свой вариант'?(custom.value.trim()||'По договорённости'):timeNow;review.innerHTML=`<b>${typeNow==='give'?'Отдам':typeNow==='looking'?'Ищу':'Обменяю'}: ${esc(item.value)}</b><p><b>${esc(qty.value)}</b></p><p><b>${esc(document.getElementById('categorySelect')?.selectedOptions[0]?.text||'Урожай')}</b></p><p>${esc(comment.value)||'Без комментария'}</p><span>📍 ${esc(document.getElementById('listingSettlement').value||'')}${place.value?' · '+esc(place.value):''}${landmark.value?' · '+esc(landmark.value):''}</span><br><span>🕒 ${esc(when)}</span>`}['fs1','fs2','fs3'].forEach((x,i)=>document.getElementById(x).style.display=i===n-1?'block':'none');['st1','st2','st3'].forEach((x,i)=>document.getElementById(x).classList.toggle('on',i<n));go('give')}
 async function ensureDevSession(){
   if(!window.komuDb) throw new Error('Supabase не подключён.');
   const {data:{session}} = await window.komuDb.auth.getSession();
@@ -116,33 +116,42 @@ async function publish(){
   const when=timeNow==='Свой вариант'?(custom.value.trim()||'По договорённости'):timeNow;
   const titleVal=item.value.trim();
   const qtyVal=qty.value.trim();
-  const placeVal=(place.value||'').trim() || 'Место не указано';
+  const regionVal=(document.getElementById('listingRegion')?.value||'').trim();
+  const settlementVal=(document.getElementById('listingSettlement')?.value||'').trim();
+  const placeVal=(place.value||'').trim();
   const landmarkVal=(landmark.value||'').trim();
+  const categoryVal=document.getElementById('categorySelect')?.value||'harvest';
   const descriptionVal=(comment.value||'').trim() || 'Без комментария';
+  if(!regionVal || !settlementVal){
+    open('Не хватает места',`<div class="notice">Укажите регион и город, посёлок или село.</div><p>Точный домашний адрес не нужен.</p>`);
+    return;
+  }
 
   try{
     const session=await ensureDevSession();
     const {data: created, error} = await window.komuDb.from('listings').insert({
       owner_id: session.user.id,
       type: typeNow,
-      category: 'harvest',
+      category: categoryVal,
       title: titleVal,
       quantity: qtyVal,
       description: descriptionVal,
-      settlement: placeVal,
-      district: landmarkVal || null,
-      location_label: placeVal,
+      region: regionVal,
+      settlement: settlementVal,
+      district: null,
+      landmark: landmarkVal || null,
+      location_label: placeVal || landmarkVal || 'Место по договорённости',
       pickup_time: when,
       status: 'active'
-    }).select('id,type,category,title,quantity,description,settlement,district,location_label,pickup_time,status,created_at').single();
+    }).select('id,type,category,title,quantity,description,region,settlement,district,landmark,location_label,pickup_time,status,created_at').single();
 
     if(error) throw error;
 
     if(created){
       const liveItem={
         id:created.id,t:created.type,c:created.category,
-        i:created.category==='harvest'?'🥒':created.category==='preserves'?'🫙':created.category==='plants'?'🌱':'📦',
-        n:created.title,q:created.quantity||'',p:created.settlement||'',w:created.pickup_time||'По договорённости',d:'ваше объявление',x:created.description||''
+          i:created.category==='harvest'?'🥒':created.category==='preserves'?'🫙':created.category==='plants'?'🌱':'📦',
+        n:created.title,q:created.quantity||'',p:created.settlement+(created.location_label?' · '+created.location_label:''),w:created.pickup_time||'По договорённости',d:'ваше объявление',x:created.description||''
       };
       data.unshift(liveItem);
     }
@@ -155,7 +164,7 @@ async function publish(){
     open('Не получилось опубликовать',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div><p>Сейчас сайт использует временный режим входа без SMS. В Supabase нужно один раз включить <b>Anonymous Sign-Ins</b>.</p><p class="muted">После этого кнопку публикации можно будет проверить прямо на сайте.</p>`);
   }
 }
-function resetForm(){done.style.display='none';['item','qty','comment','place','landmark','custom'].forEach(x=>document.getElementById(x).value='');next(1)}
+function resetForm(){done.style.display='none';['item','qty','comment','listingRegion','listingSettlement','place','landmark','custom'].forEach(x=>{const el=document.getElementById(x);if(el)el.value=''});if(document.getElementById('categorySelect'))document.getElementById('categorySelect').value='harvest';next(1)}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function open(t,b){mtitle.textContent=t;mbody.innerHTML=b;modalbg.classList.add('show')}function closeM(){modalbg.classList.remove('show')}
 
@@ -218,33 +227,30 @@ async function completeListing(id){
 }
 
 function chooseLocation(){
+  const saved=JSON.parse(localStorage.getItem('komuKabachokLocation')||'null')||{region:'Ростовская область',settlement:'Новочеркасск',district:''};
   open('Выберите место',`
-    <div class="helpIntro"><b>Сначала выберите, где вы ищете.</b><br>Так мы покажем объявления поближе к вам.</div>
+    <div class="helpIntro"><b>Выберите, где вы ищете.</b><br>После этого сайт покажет объявления из этого города или посёлка.</div>
     <label>Регион</label>
-    <select id="regionSelect" class="field">
-      <option>Ростовская область</option>
-      <option>Краснодарский край</option>
-      <option>Воронежская область</option>
-      <option>Ставропольский край</option>
-      <option>Свердловская область</option>
-      <option>Другой регион</option>
-    </select>
+    <input id="regionSelect" class="field" value="${esc(saved.region||'')}" placeholder="Например: Ростовская область">
     <label>Город, посёлок или село</label>
-    <input id="settlementInput" class="field" value="Новочеркасск" placeholder="Например: Новочеркасск, Багаевская, село А">
+    <input id="settlementInput" class="field" value="${esc(saved.settlement||'')}" placeholder="Например: Новочеркасск, Багаевская, село А">
     <label>Район <span class="muted">(необязательно)</span></label>
-    <input id="districtInput" class="field" placeholder="Например: Центр, Хотунок">
-    <p class="muted" style="margin-top:8px">Можно указать только населённый пункт. Район нужен, если хотите сузить поиск.</p>
+    <input id="districtInput" class="field" value="${esc(saved.district||'')}" placeholder="Например: Центр, Хотунок">
+    <p class="muted" style="margin-top:8px">Район можно указать для более точного поиска.</p>
     <button class="btn primary big" style="margin-top:10px" onclick="saveLocation()">Показывать объявления здесь</button>
   `)
 }
-function saveLocation(){
+async function saveLocation(){
+  const region=(document.getElementById('regionSelect').value||'').trim();
   const settlement=(document.getElementById('settlementInput').value||'').trim();
   const district=(document.getElementById('districtInput').value||'').trim();
-  if(!settlement){alert('Укажите город, посёлок или село.');return}
+  if(!region||!settlement){alert('Укажите регион и город, посёлок или село.');return}
+  const saved={region,settlement,district};
+  localStorage.setItem('komuKabachokLocation',JSON.stringify(saved));
   document.getElementById('currentLocation').textContent=settlement+(district?' · '+district:'');
-  document.getElementById('locationSub').textContent='Объявления рядом с вами.';
-  document.querySelectorAll('.listing .locationText').forEach(el=>el.textContent=el.textContent);
+  document.getElementById('locationSub').textContent='Объявления из выбранного места.';
   closeM();
+  await loadLiveListings();
 }
 
 function help(){open('Помощь и ответы',`
@@ -481,10 +487,13 @@ function accessInfo(){open('Размер текста',`<p>Кнопки A− и 
 
 async function loadLiveListings(){
   if(!window.komuDb) return;
+  const saved=JSON.parse(localStorage.getItem('komuKabachokLocation')||'null')||{region:'Ростовская область',settlement:'Новочеркасск',district:''};
   const {data: rows, error} = await window.komuDb
     .from('listings')
-    .select('id,owner_id,type,category,title,quantity,description,settlement,district,location_label,pickup_time,status,created_at')
+    .select('id,owner_id,type,category,title,quantity,description,region,settlement,district,landmark,location_label,pickup_time,status,created_at')
     .eq('status','active')
+    .eq('region',saved.region)
+    .eq('settlement',saved.settlement)
     .order('created_at',{ascending:false});
 
   if(error){
@@ -492,21 +501,14 @@ async function loadLiveListings(){
     return;
   }
 
-  const live = (rows || []).map(x => ({
-    id:x.id,
-    ownerId:x.owner_id,
-    t:x.type,
-    c:x.category,
+  const live=(rows||[]).map(x=>({
+    id:x.id,ownerId:x.owner_id,t:x.type,c:x.category,
     i:x.category==='harvest'?'🥒':x.category==='preserves'?'🫙':x.category==='plants'?'🌱':'📦',
-    n:x.title,
-    q:x.quantity || '',
-    p:x.settlement ? (x.district ? x.settlement+' · '+x.district : x.settlement) : (x.location_label||''),
-    w:x.pickup_time || 'По договорённости',
-    d:'',
-    x:x.description || ''
+    n:x.title,q:x.quantity||'',
+    p:x.settlement ? (x.location_label ? x.settlement+' · '+x.location_label : x.settlement) : (x.location_label||''),
+    w:x.pickup_time||'По договорённости',d:'',x:x.description||''
   }));
-
-  data.length = 0;
+  data.length=0;
   data.push(...live);
   render();
 }
