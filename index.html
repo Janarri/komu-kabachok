@@ -542,21 +542,53 @@ async function publish(){
     open('Не получилось сохранить объявление',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div><p>Проверьте поля и попробуйте ещё раз.</p>`);
   }
 }
-function resetForm(){done.style.display='none';['item','qty','comment','listingRegion','listingSettlement','place','landmark','custom'].forEach(x=>{const el=document.getElementById(x);if(el)el.value=''});window.listingLat=null;window.listingLng=null;window.listingSettlementCoords=null;const status=document.getElementById('listingMapStatus');if(status)status.textContent='Точка на карте не выбрана.';if(document.getElementById('categorySelect'))document.getElementById('categorySelect').value='harvest';next(1)}
+function resetForm(){
+  editingListingId=null;
+  done.style.display='none';
+  ['item','qty','comment','listingRegion','listingSettlement','place','landmark','custom','exchangeWant'].forEach(x=>{
+    const el=document.getElementById(x);
+    if(el)el.value='';
+  });
+  const input=document.getElementById('photos');
+  if(input)input.value='';
+  const preview=document.getElementById('photoPreview');
+  if(preview)preview.innerHTML='';
+  window.listingLat=null;
+  window.listingLng=null;
+  window.listingSettlementCoords=null;
+  const status=document.getElementById('listingMapStatus');
+  if(status)status.textContent='Точка на карте не выбрана.';
+  if(document.getElementById('categorySelect'))document.getElementById('categorySelect').value='harvest';
+  typeSet('give');
+  timeNow='Сегодня';
+  const today=document.querySelector('#times .chip');
+  document.querySelectorAll('#times .chip').forEach(x=>x.classList.remove('active'));
+  if(today)today.classList.add('active');
+  next(1);
+}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function open(t,b){mtitle.textContent=t;mbody.innerHTML=b;modalbg.classList.add('show')}function closeM(){modalbg.classList.remove('show')}
 
 function previewPhotos(){
   const input=document.getElementById('photos'), box=document.getElementById('photoPreview');
+  if(!input||!box)return;
+  const files=[...input.files];
   box.innerHTML='';
-  [...input.files].slice(0,5).forEach((file,i)=>{
+  files.slice(0,5).forEach((file,i)=>{
     const url=URL.createObjectURL(file);
     const wrap=document.createElement('div');
     wrap.className='photoThumb';
-    wrap.innerHTML=`<img src="${url}" alt="Предпросмотр фото"><button type="button" aria-label="Удалить фото" onclick="this.parentElement.remove()">×</button>`;
+    wrap.innerHTML=`<img src="${url}" alt="Предпросмотр фото"><button type="button" aria-label="Удалить фото">×</button>`;
+    wrap.querySelector('button').addEventListener('click',()=>{
+      const dt=new DataTransfer();
+      files.filter((_,index)=>index!==i).forEach(f=>dt.items.add(f));
+      input.files=dt.files;
+      URL.revokeObjectURL(url);
+      previewPhotos();
+    });
     box.appendChild(wrap);
   });
-  if(input.files.length>5) alert('Можно добавить до 5 фотографий.');
+  if(files.length>5) alert('Можно добавить до 5 фотографий.');
 }
 async function openMyListings(){
   if(!window.komuDb){
@@ -605,8 +637,8 @@ async function completeListing(id){
 }
 
 function getSavedLocation(){
-  try{return JSON.parse(localStorage.getItem('komuKabachokLocation')||'null')||{region:'Ростовская область',settlement:'Новочеркасск',district:'',lat:null,lng:null}}
-  catch(e){return {region:'Ростовская область',settlement:'Новочеркасск',district:'',lat:null,lng:null}}
+  try{return JSON.parse(localStorage.getItem('komuKabachokLocation')||'null')||{region:'',settlement:'',district:'',lat:null,lng:null}}
+  catch(e){return {region:'',settlement:'',district:'',lat:null,lng:null}}
 }
 function coordsFromSuggestion(s){
   const lat=Number(s?.data?.geo_lat),lng=Number(s?.data?.geo_lon);
