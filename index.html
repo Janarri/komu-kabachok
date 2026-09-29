@@ -408,56 +408,95 @@ async function publish(){
   const when=timeNow==='Свой вариант'?(custom.value.trim()||'По договорённости'):timeNow;
   const titleVal=item.value.trim();
   const qtyVal=qty.value.trim();
+  const exchangeWantVal=(document.getElementById('exchangeWant')?.value||'').trim();
   const regionVal=(document.getElementById('listingRegion')?.value||'').trim();
   const settlementVal=(document.getElementById('listingSettlement')?.value||'').trim();
   const placeVal=(place.value||'').trim();
   const landmarkVal=(landmark.value||'').trim();
   const categoryVal=document.getElementById('categorySelect')?.value||'harvest';
-  const descriptionVal=(comment.value||'').trim() || 'Без комментария';
+  const commentVal=(comment.value||'').trim();
+  const descriptionVal=commentVal || 'Без комментария';
   const locationLat=Number.isFinite(Number(window.listingLat))?Number(window.listingLat):null;
   const locationLng=Number.isFinite(Number(window.listingLng))?Number(window.listingLng):null;
   if(!regionVal || !settlementVal){
     open('Не хватает места',`<div class="notice">Укажите регион и город, посёлок или село.</div><p>Точный домашний адрес не нужен.</p>`);
     return;
   }
+  if(typeNow==='exchange'&&!exchangeWantVal){
+    open('Не хватает условия обмена','<div class="notice">Напишите, что хотите получить в обмен.</div>');
+    return;
+  }
+  const allText=[titleVal,qtyVal,exchangeWantVal,commentVal,placeVal,landmarkVal].join(' ');
+  if(containsSaleLanguage(allText)){
+    open('На «Кому кабачок?» нельзя продавать','<div class="notice">Похоже, вы указали цену или продажу. Здесь можно только отдать, найти или предложить обмен.</div><p>Уберите цену и слова про продажу, затем попробуйте снова.</p>');
+    return;
+  }
+  const publicPlace=sanitizePublicLocationLabel(placeVal);
+  const publicLandmark=sanitizePublicLocationLabel(landmarkVal);
 
   try{
     const session=await ensureDevSession();
-    const {data: created, error} = await window.komuDb.from('listings').insert({
-      owner_id: session.user.id,
-      type: typeNow,
-      category: categoryVal,
-      title: titleVal,
-      quantity: qtyVal,
-      description: descriptionVal,
-      region: regionVal,
-      settlement: settlementVal,
-      district: null,
-      landmark: landmarkVal || null,
-      location_label: placeVal || landmarkVal || 'Место по договорённости',
-      location_lat: locationLat,
-      location_lng: locationLng,
-      pickup_time: when,
-      status: 'active'
-    }).select('id,type,category,title,quantity,description,region,settlement,district,landmark,location_label,location_lat,location_lng,pickup_time,status,created_at').single();
+    let savedId=editingListingId;
+    let created=null;
+    const payload={
+      type:typeNow,
+      category:categoryVal,
+      title:titleVal,
+      quantity:qtyVal,
+      description:descriptionVal,
+      region:regionVal,
+      settlement:settlementVal,
+      district:null,
+      landmark:publicLandmark || null,
+      location_label:publicPlace || publicLandmark || 'Место по договорённости',
+      location_lat:locationLat,
+      location_lng:locationLng,
+      pickup_time:when,
+      exchange_give:typeNow==='exchange'?titleVal:null,
+      exchange_want:typeNow==='exchange'?exchangeWantVal:null,
+      status:'active',
+      updated_at:new Date().toISOString()
+    };
 
-    if(error) throw error;
-
-    if(created){
-      const liveItem={
-        id:created.id,t:created.type,c:created.category,
-          i:created.category==='harvest'?'🥒':created.category==='preserves'?'🫙':created.category==='plants'?'🌱':'📦',
-        n:created.title,q:created.quantity||'',p:created.settlement+(created.location_label?' · '+created.location_label:''),w:created.pickup_time||'По договорённости',d:'ваше объявление',x:created.description||'',lat:created.location_lat,lng:created.location_lng
-      };
-      data.unshift(liveItem);
+    if(editingListingId){
+      const {data,error}=await window.komuDb.from('listings')
+        .update(payload)
+        .eq('id',editingListingId)
+        .eq('owner_id',session.user.id)
+        .select('id,type,category,title,quantity,description,region,settlement,district,landmark,location_label,location_lat,location_lng,pickup_time,status,created_at,updated_at,exchange_give,exchange_want')
+        .single();
+      if(error) throw error;
+      created=data;
+    }else{
+      const {data,error}=await window.komuDb.from('listings').insert({
+        owner_id:session.user.id,
+        ...payload
+      }).select('id,type,category,title,quantity,description,region,settlement,district,landmark,location_label,location_lat,location_lng,pickup_time,status,created_at,updated_at,exchange_give,exchange_want').single();
+      if(error) throw error;
+      created=data;
+      savedId=data.id;
     }
 
+    let photoWarning='';
+    try{
+      if(savedId) await uploadListingPhotos(savedId,session.user.id);
+    }catch(photoError){
+      console.warn('Фото не загрузились:',photoError);
+      photoWarning=' Фото не загрузились — объявление всё равно сохранено.';
+    }
+
+    const wasEditing=!!editingListingId;
+    editingListingId=null;
+    document.getElementById('doneTitle').textContent='Готово! 🌱';
+    document.getElementById('doneText').textContent=(wasEditing?'Изменения сохранены.':(created?'Ваше объявление опубликовано.':'Готово.'))+photoWarning;
+    if(document.getElementById('doneText').textContent.trim()==='') document.getElementById('doneText').textContent='Готово.';
     ['fs1','fs2','fs3'].forEach(x=>document.getElementById(x).style.display='none');
     done.style.display='block';
-    render();
+    await loadLiveListings();
+    refreshNotificationCount();
   }catch(error){
     console.error('Ошибка публикации:',error);
-    open('Не получилось опубликовать',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div><p>Сейчас сайт использует временный режим входа без SMS. В Supabase нужно один раз включить <b>Anonymous Sign-Ins</b>.</p><p class="muted">После этого кнопку публикации можно будет проверить прямо на сайте.</p>`);
+    open('Не получилось сохранить объявление',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div><p>Проверьте поля и попробуйте ещё раз.</p>`);
   }
 }
 function resetForm(){done.style.display='none';['item','qty','comment','listingRegion','listingSettlement','place','landmark','custom'].forEach(x=>{const el=document.getElementById(x);if(el)el.value=''});window.listingLat=null;window.listingLng=null;window.listingSettlementCoords=null;const status=document.getElementById('listingMapStatus');if(status)status.textContent='Точка на карте не выбрана.';if(document.getElementById('categorySelect'))document.getElementById('categorySelect').value='harvest';next(1)}
