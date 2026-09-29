@@ -1060,7 +1060,7 @@ let currentConversationId=null;
 
 async function request(listingId){
   try{
-    const listing=data.find(x=>String(x.id)===String(listingId));
+    let listing=data.find(x=>String(x.id)===String(listingId));
     if(!listing){
       const {data:remote,error}=await window.komuDb.from('listings')
         .select('id,owner_id,type,category,title,quantity,description,settlement,location_label,pickup_time,location_lat,location_lng,exchange_want,status')
