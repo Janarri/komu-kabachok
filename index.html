@@ -1213,6 +1213,7 @@ async function openConversation(conversationId,title){
   try{
     const session=await ensureDevSession();
     currentConversationId=conversationId;
+    await markConversationNotificationsRead(conversationId);
     const {data: rows,error}=await window.komuDb
       .from('messages')
       .select('id,sender_id,body,created_at')
