@@ -94,7 +94,58 @@ function request(){open('Запрос отправлен',`<div class="notice ok
 function typeSet(t){typeNow=t;['tGive','tLook','tEx'].forEach(x=>document.getElementById(x).classList.remove('active'));document.getElementById(t==='give'?'tGive':t==='looking'?'tLook':'tEx').classList.add('active');document.getElementById('ftitle').textContent=t==='give'?'Что отдаёте?':t==='looking'?'Что ищете?':'Что отдаёте и что хотите получить?'}
 function time(t,b){timeNow=t;document.querySelectorAll('#times .chip').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('custom').style.display=t==='Свой вариант'?'block':'none'}
 function next(n){if(n===2&&(!item.value.trim()||!qty.value.trim())){alert('Напишите, что это и примерное количество.');return}if(n===3){let when=timeNow==='Свой вариант'?(custom.value.trim()||'По договорённости'):timeNow;review.innerHTML=`<b>${typeNow==='give'?'Отдам':typeNow==='looking'?'Ищу':'Обменяю'}: ${esc(item.value)}</b><p><b>${esc(qty.value)}</b></p><p>${esc(comment.value)||'Без комментария'}</p><span>📍 ${esc(place.value||'Новочеркасск')}${landmark.value?' · '+esc(landmark.value):''}</span><br><span>🕒 ${esc(when)}</span>`}['fs1','fs2','fs3'].forEach((x,i)=>document.getElementById(x).style.display=i===n-1?'block':'none');['st1','st2','st3'].forEach((x,i)=>document.getElementById(x).classList.toggle('on',i<n));go('give')}
-function publish(){let when=timeNow==='Свой вариант'?(custom.value.trim()||'По договорённости'):timeNow;data.unshift({t:typeNow,c:typeNow==='give'?'harvest':typeNow,i:typeNow==='give'?'🌱':typeNow==='looking'?'🙋':'🔄',n:item.value,q:qty.value,p:place.value||'Новочеркасск',w:when,d:'ваше объявление',x:comment.value||'Без комментария'});['fs1','fs2','fs3'].forEach(x=>document.getElementById(x).style.display='none');done.style.display='block';render()}
+async function ensureDevSession(){
+  if(!window.komuDb) throw new Error('Supabase не подключён.');
+  const {data:{session}} = await window.komuDb.auth.getSession();
+  if(session) return session;
+  const {data, error} = await window.komuDb.auth.signInAnonymously();
+  if(error) throw error;
+  return data.session;
+}
+
+async function publish(){
+  const when=timeNow==='Свой вариант'?(custom.value.trim()||'По договорённости'):timeNow;
+  const titleVal=item.value.trim();
+  const qtyVal=qty.value.trim();
+  const placeVal=(place.value||'').trim() || 'Место не указано';
+  const landmarkVal=(landmark.value||'').trim();
+  const descriptionVal=(comment.value||'').trim() || 'Без комментария';
+
+  try{
+    const session=await ensureDevSession();
+    const {data: created, error} = await window.komuDb.from('listings').insert({
+      owner_id: session.user.id,
+      type: typeNow,
+      category: 'harvest',
+      title: titleVal,
+      quantity: qtyVal,
+      description: descriptionVal,
+      settlement: placeVal,
+      district: landmarkVal || null,
+      location_label: placeVal,
+      pickup_time: when,
+      status: 'active'
+    }).select('id,type,category,title,quantity,description,settlement,district,location_label,pickup_time,status,created_at').single();
+
+    if(error) throw error;
+
+    if(created){
+      const liveItem={
+        id:created.id,t:created.type,c:created.category,
+        i:created.category==='harvest'?'🥒':created.category==='preserves'?'🫙':created.category==='plants'?'🌱':'📦',
+        n:created.title,q:created.quantity||'',p:created.settlement||'',w:created.pickup_time||'По договорённости',d:'ваше объявление',x:created.description||''
+      };
+      data.unshift(liveItem);
+    }
+
+    ['fs1','fs2','fs3'].forEach(x=>document.getElementById(x).style.display='none');
+    done.style.display='block';
+    render();
+  }catch(error){
+    console.error('Ошибка публикации:',error);
+    open('Не получилось опубликовать',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div><p>Сейчас сайт использует временный режим входа без SMS. В Supabase нужно один раз включить <b>Anonymous Sign-Ins</b>.</p><p class="muted">После этого кнопку публикации можно будет проверить прямо на сайте.</p>`);
+  }
+}
 function resetForm(){done.style.display='none';['item','qty','comment','place','landmark','custom'].forEach(x=>document.getElementById(x).value='');next(1)}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function open(t,b){mtitle.textContent=t;mbody.innerHTML=b;modalbg.classList.add('show')}function closeM(){modalbg.classList.remove('show')}
@@ -111,14 +162,50 @@ function previewPhotos(){
   });
   if(input.files.length>5) alert('Можно добавить до 5 фотографий.');
 }
-function openMyListings(){
-  open('Мои объявления',`
-    <div class="listingMine">
-      <div class="mineRow"><div><b>🥒 Кабачки</b><br><span class="muted">8 молодых · Хотунок · Сегодня после 18:00</span></div><button class="btn soft" onclick="closeM()">✓ Урожай пристроен!</button></div>
-      <div class="mineRow"><div><b>🍎 Яблоки</b><br><span class="muted">около 10 кг · Центр · Завтра</span></div><button class="btn" onclick="alert('В рабочей версии здесь откроется редактирование.')">Изменить</button></div>
-      <h3 style="margin-top:22px">Завершённые</h3>
-      <div class="mineDone">🌱 Рассада томатов — пристроено</div>
-    </div>`);
+async function openMyListings(){
+  if(!window.komuDb){
+    open('Мои объявления','<div class="notice">Supabase пока не подключён.</div>');
+    return;
+  }
+  try{
+    const session=await ensureDevSession();
+    const {data: rows,error}=await window.komuDb
+      .from('listings')
+      .select('id,type,title,quantity,settlement,pickup_time,status,created_at')
+      .eq('owner_id',session.user.id)
+      .order('created_at',{ascending:false});
+
+    if(error) throw error;
+
+    const active=(rows||[]).filter(x=>x.status==='active');
+    const doneRows=(rows||[]).filter(x=>x.status!=='active');
+
+    const iconFor=x=>x.type==='give'?'🌱':x.type==='looking'?'🙋':'🔄';
+    open('Мои объявления',`
+      <div class="listingMine">
+        ${active.length?active.map(x=>`
+          <div class="mineRow">
+            <div><b>${iconFor(x)} ${esc(x.title)}</b><br><span class="muted">${esc(x.quantity||'')} · ${esc(x.settlement||'')} · ${esc(x.pickup_time||'')}</span></div>
+            <button class="btn soft" onclick="completeListing('${x.id}')">✓ ${x.type==='looking'?'Нашёл!':x.type==='exchange'?'Обмен состоялся!':'Урожай пристроен!'}</button>
+          </div>`).join(''):'<div class="notice">Активных объявлений пока нет.</div>'}
+        <h3 style="margin-top:22px">Завершённые</h3>
+        ${doneRows.length?doneRows.map(x=>`<div class="mineDone">${iconFor(x)} ${esc(x.title)} — завершено</div>`).join(''):'<p class="muted">Пока пусто.</p>'}
+      </div>`);
+  }catch(error){
+    console.error('Мои объявления:',error);
+    open('Мои объявления',`<div class="notice">${esc(error.message||'Не удалось загрузить объявления.')}</div>`);
+  }
+}
+
+async function completeListing(id){
+  try{
+    const {error}=await window.komuDb.from('listings').update({status:'completed',updated_at:new Date().toISOString()}).eq('id',id);
+    if(error) throw error;
+    await openMyListings();
+    await loadLiveListings();
+  }catch(error){
+    open('Не получилось закрыть объявление',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div>`);
+  }
 }
 
 function chooseLocation(){
@@ -215,7 +302,14 @@ function help(){open('Помощь и ответы',`
 function ai(){open('Помощник «Кому кабачок?»',`<p><b>Я знаю только этот сайт и его правила.</b></p><div class="modebar"><button class="chip" onclick="answer('банки')">Как отдать банки?</button><button class="chip" onclick="answer('карта')">Как работает карта?</button><button class="chip" onclick="answer('убрать')">Как убрать объявление?</button></div><div id="ans" class="review">Выберите вопрос.</div>`)}
 function answer(x){ans.innerHTML=x==='банки'?'<b>Как отдать банки?</b><p>«Отдать урожай» → напишите «стеклянные банки» → количество → место → время → публикация.</p>':x==='карта'?'<b>Как работает карта?</b><p>Можно найти место по адресу или поставить точку. Публично показываем только примерное место, не домашний адрес.</p>':'<b>Как убрать объявление?</b><p>В рабочей версии: «Мои объявления» → нужное объявление → «Убрать объявление».</p>'}
 function chat(){open('Сообщения',`<div class="chat"><div class="bubble"><b>Ирина</b><br>Здравствуйте! Хочу забрать кабачки. Сегодня после 18 удобно?</div><div class="bubble me">Здравствуйте! Да, напишу ориентир ближе к вечеру.</div><div class="bubble"><b>Сергей</b><br>Банки ещё остались?</div></div><div class="chatrow"><input class="field" placeholder="Написать сообщение…"><button class="btn primary">Отправить</button></div>`)}
-function login(){open('Вход',`<p>Номер нужен только для проверки, что вы настоящий человек, а не бот.</p><div class="notice">Номер не показывается другим пользователям. Для общения есть сообщения на сайте.</div><label>Номер телефона</label><input class="field" placeholder="+7 ___ ___-__-__"><button class="btn primary big" style="margin-top:14px" onclick="alert('В рабочей версии сюда придёт SMS-код.')">Получить код</button>`)}
+async function login(){
+  try{
+    const session=await ensureDevSession();
+    open('Вход',`<div class="notice ok">Вы вошли в тестовом режиме.</div><p>Сейчас SMS мы ещё не подключали, поэтому для проверки сайта используется временный анонимный аккаунт.</p><p class="muted">Позже этот же аккаунт можно будет связать с подтверждённым номером телефона.</p><button class="btn primary big" onclick="closeM()">Понятно</button>`);
+  }catch(error){
+    open('Вход',`<div class="notice">${esc(error.message||'Не удалось войти.')}</div><p>Нужно включить <b>Anonymous Sign-Ins</b> в настройках Supabase. Это временный режим для проверки сайта, а не окончательная авторизация.</p>`);
+  }
+}
 function accessInfo(){open('Размер текста',`<p>Кнопки A− и A+ закреплены внизу справа. Увеличивается не только текст, но и весь интерфейс.</p>`)}function font(d){if(d===0){document.documentElement.style.setProperty('--scale','1');return}let n=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale'))||1;document.documentElement.style.setProperty('--scale',Math.max(.9,Math.min(1.25,n+d)))}
 
 async function loadLiveListings(){
