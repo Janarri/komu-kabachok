@@ -99,16 +99,6 @@ function getFilteredListings(){
   };
   return data.filter(x=>matchesFilter(x)&&(!q||[x.n,x.q,x.p,x.x].join(' ').toLowerCase().includes(q)));
 }
-function getFilteredListings(){
-  const q=(document.getElementById('q')?.value||'').toLowerCase().trim();
-  const matchesFilter=x=>{
-    if(filterNow==='all') return true;
-    if(filterNow==='looking'||filterNow==='exchange') return x.t===filterNow;
-    if(filterNow==='jars') return x.c==='preserves'||x.c==='containers';
-    return x.c===filterNow;
-  };
-  return data.filter(x=>matchesFilter(x)&&(!q||[x.n,x.q,x.p,x.x].join(' ').toLowerCase().includes(q)));
-}
 function render(){
   const a=getFilteredListings();
   document.getElementById('cards').innerHTML=a.length?a.map((x,k)=>`<article class="card listing"><div class="topline"><span class="tag">${x.t==='give'?'Отдам':x.t==='looking'?'Ищу':'Обмен'}</span><span class="emoji">${x.i}</span></div><h3>${esc(x.n)}</h3><b>${esc(x.q)}</b><p class="muted">${esc(x.x)}</p><div class="meta"><span>📍 ${esc(x.p||'Место не указано')}</span><span>🕒 ${esc(x.w||'По договорённости')}</span></div><div class="foot"><span class="distance">${esc(x.d||'')}</span><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="btn" onclick="showListingOnMap('${x.id}')">📍 На карте</button><button class="btn primary" onclick="request('${x.id}')">${x.t==='give'?'Хочу забрать':x.t==='looking'?'Откликнуться':'Предложить обмен'}</button></div></div></article>`).join(''):'<div class="card" style="grid-column:1/-1"><h3>Ничего не нашли</h3><p class="muted">Попробуйте другой запрос или снимите фильтр.</p></div>';
