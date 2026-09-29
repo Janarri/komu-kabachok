@@ -165,9 +165,7 @@ async function refreshKabachokMap(){
   const saved=getSavedLocation();
   const mapRegion=isTestMode?'Ростовская область':saved.region;
   const mapSettlement=isTestMode?'Новочеркасск':saved.settlement;
-  let center=isTestMode?null:(Number.isFinite(Number(saved.lat))&&Number.isFinite(Number(saved.lng))?[Number(saved.lat),Number(saved.lng)]:null);
-  const query=[mapSettlement,mapRegion].filter(Boolean).join(', ');
-  if(!center) center=await geocodePlace(query);
+  let center=await resolveMapCenter(saved,mapSettlement,mapRegion);
   let usedBrowserLocation=false;
   if(!center && !saved.settlement){
     center=await getBrowserCoordinates();
@@ -288,6 +286,29 @@ function applyListingMapPoint(){
   if(status)status.textContent='✓ Примерное место на карте выбрано.';
   closeM();
 }
+async function resolveMapCenter(saved,mapSettlement,mapRegion){
+  const savedLat=Number(saved?.lat),savedLng=Number(saved?.lng);
+  if(Number.isFinite(savedLat)&&Number.isFinite(savedLng)) return [savedLat,savedLng];
+  const query=[mapSettlement,mapRegion].filter(Boolean).join(', ');
+  if(query){
+    try{
+      const suggestions=await requestAddressSuggestions(query);
+      const picked=suggestions.find(s=>localityFromSuggestion(s)&&coordsFromSuggestion(s));
+      const coords=picked?coordsFromSuggestion(picked):null;
+      if(coords) return coords;
+    }catch(error){
+      console.warn('Не удалось определить координаты выбранного места через DaData:',error);
+    }
+    const geocoded=await geocodePlace(query);
+    if(geocoded) return geocoded;
+  }
+  if(!saved?.settlement){
+    const browserCoords=await getBrowserCoordinates();
+    if(browserCoords) return browserCoords;
+  }
+  return null;
+}
+
 async function initKabachokMap(){
   const canvas=document.getElementById('mapCanvas');
   if(!canvas) return;
@@ -305,13 +326,8 @@ async function initKabachokMap(){
   const saved=getSavedLocation();
   const mapRegion=isTestMode?'Ростовская область':saved.region;
   const mapSettlement=isTestMode?'Новочеркасск':saved.settlement;
-  let initialCenter=isTestMode?null:(Number.isFinite(Number(saved.lat))&&Number.isFinite(Number(saved.lng))?[Number(saved.lat),Number(saved.lng)]:null);
-  if(!initialCenter) initialCenter=await geocodePlace([mapSettlement,mapRegion].filter(Boolean).join(', '));
-  let initialZoom=initialCenter?11:3;
-  if(!initialCenter && !saved.settlement){
-    initialCenter=await getBrowserCoordinates();
-    initialZoom=initialCenter?11:3;
-  }
+  const initialCenter=await resolveMapCenter(saved,mapSettlement,mapRegion);
+  const initialZoom=initialCenter?11:3;
   kabachokMap=new ymaps.Map('mapCanvas',{
     center:initialCenter||[61,105],
     zoom:initialZoom,
