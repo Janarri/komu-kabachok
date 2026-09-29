@@ -165,15 +165,11 @@ async function refreshKabachokMap(){
   const saved=getSavedLocation();
   const mapRegion=isTestMode?'Ростовская область':saved.region;
   const mapSettlement=isTestMode?'Новочеркасск':saved.settlement;
-  let center=await resolveMapCenter(saved,mapSettlement,mapRegion);
-  let usedBrowserLocation=false;
-  if(!center && !saved.settlement){
-    center=await getBrowserCoordinates();
-    usedBrowserLocation=!!center;
-  }
+  const center=await resolveMapCenter(saved,mapSettlement,mapRegion);
   if(req!==kabachokMapRequest) return;
-  const target=center||[61,105];
-  const zoom=center?11:3;
+  const target=center||[55.75,37.61];
+  const zoom=center?11:5;
+  const usedBrowserLocation=false;
   kabachokMap.setCenter(target,zoom,{duration:250});
   if(kabachokMapMarker) kabachokMap.geoObjects.remove(kabachokMapMarker);
   if(center){
@@ -181,7 +177,7 @@ async function refreshKabachokMap(){
       hintContent:mapSettlement||(usedBrowserLocation?'Ваше местоположение':'Выбранное место'),
       balloonContent:mapSettlement
         ? '<b>'+esc(mapSettlement)+'</b><br>Регион: '+esc(mapRegion||'')+'<br>Примерный центр выбранного места.'
-        : (usedBrowserLocation ? '<b>Ваше местоположение</b><br>Карта центрирована по геопозиции браузера.' : '<b>Выбранное место</b>')
+        : '<b>Выбранное место</b>'
     },{
       preset:'islands#greenDotIcon'
     });
@@ -301,10 +297,6 @@ async function resolveMapCenter(saved,mapSettlement,mapRegion){
     }
     const geocoded=await geocodePlace(query);
     if(geocoded) return geocoded;
-  }
-  if(!saved?.settlement){
-    const browserCoords=await getBrowserCoordinates();
-    if(browserCoords) return browserCoords;
   }
   return null;
 }
