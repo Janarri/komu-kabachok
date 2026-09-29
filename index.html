@@ -269,10 +269,11 @@ function setupAddressSuggest(inputId,menuId,onPick){
       menu.innerHTML='<div class="suggestLoading">Ищу варианты…</div>';
       menu.classList.add('show');
       try{
-        const suggestions=await requestAddressSuggestions(q);
+        let suggestions=await requestAddressSuggestions(q);
         if(myNo!==requestNo) return;
+        suggestions=suggestions.filter(s=>localityFromSuggestion(s));
         if(!suggestions.length){
-          menu.innerHTML='<div class="suggestLoading">Ничего подходящего не нашлось.</div>';
+          menu.innerHTML='<div class="suggestLoading">Не нашлось подходящего города или населённого пункта.</div>';
           return;
         }
         menu.innerHTML=suggestions.map((s,i)=>{
@@ -594,6 +595,11 @@ async function loadLiveListings(){
   render();
 }
 loadLiveListings();
+setTimeout(()=>{
+  const saved=getSavedLocation();
+  const current=document.getElementById('currentLocation');
+  if(current) current.textContent=saved.settlement+(saved.district?' · '+saved.district:'');
+},0);
 
 render();
 </script></body></html>
