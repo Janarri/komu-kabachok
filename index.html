@@ -781,6 +781,30 @@ async function submitReport(id,reason){
   }
 }
 
+let notificationChannel=null;
+async function subscribeToNotifications(){
+  if(notificationChannel){
+    try{await window.komuDb.removeChannel(notificationChannel);}catch(e){}
+    notificationChannel=null;
+  }
+  try{
+    const session=await ensureDevSession();
+    notificationChannel=window.komuDb
+      .channel('notifications-'+session.user.id)
+      .on('postgres_changes',{
+        event:'INSERT',
+        schema:'public',
+        table:'notifications',
+        filter:'recipient_id=eq.'+session.user.id
+      },()=>{
+        refreshNotificationCount();
+      })
+      .subscribe(status=>{
+        if(status!=='SUBSCRIBED')console.log('Notifications realtime:',status);
+      });
+  }catch(error){console.warn('Realtime уведомлений:',error.message)}
+}
+
 async function refreshNotificationCount(){
   if(!window.komuDb)return;
   try{
@@ -1288,6 +1312,7 @@ setTimeout(()=>{
   const current=document.getElementById('heroLocation');
   if(current) current.textContent=saved.settlement?(saved.settlement+(saved.district?' · '+saved.district:'')):'Выберите город';
   refreshNotificationCount();
+  subscribeToNotifications();
 },0);
 
 render();
