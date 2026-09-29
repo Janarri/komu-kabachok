@@ -697,7 +697,10 @@ async function deleteListing(id){
     const session=await ensureDevSession();
     const {data:photos}=await window.komuDb.from('listing_photos').select('storage_path').eq('listing_id',id).eq('owner_id',session.user.id);
     const paths=(photos||[]).map(x=>x.storage_path).filter(Boolean);
-    if(paths.length) await window.komuDb.storage.from('listing-photos').remove(paths);
+    if(paths.length){
+      const {error:storageError}=await window.komuDb.storage.from('listing-photos').remove(paths);
+      if(storageError)throw storageError;
+    }
     const {error}=await window.komuDb.from('listings').delete().eq('id',id).eq('owner_id',session.user.id);
     if(error) throw error;
     await openMyListings();
