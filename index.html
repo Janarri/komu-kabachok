@@ -380,23 +380,28 @@ function clearListingDraftFields(){
 }
 
 function typeSet(t){
-  if(typeNow!==t) clearListingDraftFields();
+  const switchingType=typeNow!==t;
+  if(switchingType) clearListingDraftFields();
   typeNow=t;
   ['tGive','tLook','tEx'].forEach(x=>document.getElementById(x).classList.remove('active'));
   document.getElementById(t==='give'?'tGive':t==='looking'?'tLook':'tEx').classList.add('active');
 
-  // После опубликованного объявления переключение типа должно открывать новую чистую форму.
+  // Переключение типа всегда возвращает в начало новой формы.
   const done=document.getElementById('done');
-  if(done&&done.style.display!=='none'){
-    done.style.display='none';
-    document.getElementById('fs1').style.display='block';
-    document.getElementById('fs2').style.display='none';
-    document.getElementById('fs3').style.display='none';
-    ['st1','st2','st3'].forEach((x,i)=>document.getElementById(x).classList.toggle('on',i===0));
-    const publishButton=document.getElementById('publishButton');
-    if(publishButton)publishButton.textContent='Опубликовать объявление';
-    editingListingId=null;
-  }
+  const fs1=document.getElementById('fs1');
+  const fs2=document.getElementById('fs2');
+  const fs3=document.getElementById('fs3');
+  if(done) done.style.display='none';
+  if(fs1) fs1.style.display='block';
+  if(fs2) fs2.style.display='none';
+  if(fs3) fs3.style.display='none';
+  ['st1','st2','st3'].forEach((x,i)=>{
+    const el=document.getElementById(x);
+    if(el) el.classList.toggle('on',i===0);
+  });
+  editingListingId=null;
+  const publishButton=document.getElementById('publishButton');
+  if(publishButton) publishButton.textContent='Опубликовать объявление';
   updateFormForType();
 }
 function time(t,b){
