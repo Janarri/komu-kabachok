@@ -844,21 +844,54 @@ async function openNotifications(){
       .select('id,type,conversation_id,listing_id,title,body,created_at,read_at')
       .eq('recipient_id',session.user.id)
       .order('created_at',{ascending:false})
-      .limit(30);
+      .limit(100);
     if(error)throw error;
+
+    const grouped=[];
+    const byConversation=new Map();
+    (rows||[]).forEach(n=>{
+      const key=n.conversation_id?String(n.conversation_id):'notification:'+n.id;
+      let group=byConversation.get(key);
+      if(!group){
+        group={
+          key,
+          conversationId:n.conversation_id||'',
+          title:n.title||'Сообщение',
+          latestBody:n.body||'',
+          latestAt:n.created_at,
+          unreadCount:0
+        };
+        byConversation.set(key,group);
+        grouped.push(group);
+      }
+      if(!n.read_at) group.unreadCount++;
+    });
+
     open('Уведомления',`
-      ${(rows||[]).length?(rows||[]).map(n=>`
-        <button type="button" class="notificationItem ${n.read_at?'':'unread'}" data-notification-id="${esc(n.id)}" data-conversation-id="${esc(n.conversation_id||'')}">
-          <b>${esc(n.title||'Сообщение')}</b><span>${esc(n.body||'')}</span><small>${new Date(n.created_at).toLocaleString('ru-RU')}</small>
+      ${grouped.length?grouped.map(g=>`
+        <button type="button" class="notificationItem ${g.unreadCount?'unread':''}" data-notification-key="${esc(g.key)}" data-conversation-id="${esc(g.conversationId)}">
+          <div class="conversationTopline">
+            <b>${esc(g.title)}</b>
+            ${g.unreadCount?'<span class="conversationUnread">Новое'+(g.unreadCount>1?' · '+g.unreadCount:'')+'</span>':''}
+          </div>
+          <span>${esc(g.latestBody)}</span>
+          <small>${new Date(g.latestAt).toLocaleString('ru-RU')}</small>
         </button>`).join(''):'<div class="notice">Новых уведомлений нет.</div>'}
     `);
+
     document.querySelectorAll('#mbody .notificationItem').forEach(btn=>{
       btn.addEventListener('click',async()=>{
-        const notificationId=btn.dataset.notificationId;
         const conversationId=btn.dataset.conversationId;
+        const key=btn.dataset.notificationKey;
         try{
           const s=await ensureDevSession();
-          await window.komuDb.from('notifications').update({read_at:new Date().toISOString()}).eq('id',notificationId).eq('recipient_id',s.user.id);
+          if(conversationId){
+            await window.komuDb.from('notifications').update({read_at:new Date().toISOString()})
+              .eq('recipient_id',s.user.id).eq('conversation_id',conversationId).is('read_at',null);
+          }else{
+            await window.komuDb.from('notifications').update({read_at:new Date().toISOString()})
+              .eq('recipient_id',s.user.id).eq('id',key.replace('notification:',''));
+          }
         }catch(e){}
         refreshNotificationCount();
         if(conversationId){
@@ -866,6 +899,8 @@ async function openNotifications(){
           await openConversation(conversationId,title);
         }else{
           btn.classList.remove('unread');
+          const badge=btn.querySelector('.conversationUnread');
+          if(badge)badge.remove();
         }
       });
     });
