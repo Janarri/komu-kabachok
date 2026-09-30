@@ -829,13 +829,9 @@ async function openListingDetails(id){
 async function reportListing(id){
   try{
     const session=await ensureDevSession();
-    const {data:existing,error}=await window.komuDb.from('listing_reports')
-      .select('id')
-      .eq('listing_id',id)
-      .eq('reporter_id',session.user.id)
-      .limit(1);
+    const {data:alreadyReported,error}=await window.komuDb.rpc('has_own_listing_report',{p_listing_id:id});
     if(error) throw error;
-    if(existing?.length){
+    if(alreadyReported){
       open('Жалоба уже отправлена','<div class="notice ok">Вы уже отправляли жалобу на это объявление.</div>');
       return;
     }
