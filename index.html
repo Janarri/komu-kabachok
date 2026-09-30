@@ -583,6 +583,7 @@ function resetForm(){
   if(input)input.value='';
   const preview=document.getElementById('photoPreview');
   if(preview)preview.innerHTML='';
+  window.editingExistingPhotoHtml='';
   window.listingLat=null;
   window.listingLng=null;
   window.listingSettlementCoords=null;
