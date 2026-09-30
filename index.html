@@ -1228,7 +1228,8 @@ async function request(listingId){
     if(error) throw error;
 
     let conversation=existingRows?.[0]||null;
-    if(!conversation){
+    const isNewConversation=!conversation;
+    if(isNewConversation){
       const {data:created,error:createError}=await window.komuDb
         .from('conversations')
         .insert({
@@ -1250,7 +1251,7 @@ async function request(listingId){
         ?'Здравствуйте! У меня есть то, что вы ищете.'
         :'Здравствуйте! Хочу предложить обмен.';
 
-    await openConversation(conversation.id,listing.n||listing.title||'Объявление',firstMessage);
+    await openConversation(conversation.id,listing.n||listing.title||'Объявление',isNewConversation?firstMessage:'');
   }catch(error){
     console.error('Сообщение:',error);
     open('Не получилось открыть переписку',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div>`);
