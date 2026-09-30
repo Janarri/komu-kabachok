@@ -1242,20 +1242,15 @@ async function request(listingId){
       if(createError) throw createError;
       conversation=created;
 
-      const firstMessage=listing.t==='give'||listing.type==='give'
-        ?'Здравствуйте! Хочу забрать. Когда удобно?'
-        :listing.t==='looking'||listing.type==='looking'
-          ?'Здравствуйте! У меня есть то, что вы ищете.'
-          :'Здравствуйте! Хочу предложить обмен.';
-      const {error:messageError}=await window.komuDb.from('messages').insert({
-        conversation_id:conversation.id,
-        sender_id:session.user.id,
-        body:firstMessage
-      });
-      if(messageError) throw messageError;
     }
 
-    await openConversation(conversation.id,listing.n||listing.title||'Объявление');
+    const firstMessage=listing.t==='give'||listing.type==='give'
+      ?'Здравствуйте! Хочу забрать. Когда удобно?'
+      :listing.t==='looking'||listing.type==='looking'
+        ?'Здравствуйте! У меня есть то, что вы ищете.'
+        :'Здравствуйте! Хочу предложить обмен.';
+
+    await openConversation(conversation.id,listing.n||listing.title||'Объявление',firstMessage);
   }catch(error){
     console.error('Сообщение:',error);
     open('Не получилось открыть переписку',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div>`);
@@ -1357,7 +1352,7 @@ async function subscribeToConversation(conversationId){
     });
 }
 
-async function openConversation(conversationId,title){
+async function openConversation(conversationId,title,initialDraft=''){
   try{
     const session=await ensureDevSession();
     currentConversationId=conversationId;
@@ -1374,7 +1369,7 @@ async function openConversation(conversationId,title){
       <div id="liveChat" class="chat" style="max-height:360px;overflow:auto">
         ${(rows||[]).map(m=>`<div class="bubble ${m.sender_id===session.user.id?'me':''}">${esc(m.body)}</div>`).join('')||'<div class="muted">Сообщений пока нет.</div>'}
       </div>
-      <div class="chatrow"><input id="messageInput" class="field" maxlength="2000" autocomplete="off" placeholder="Написать сообщение…"><button class="btn primary" onclick="sendMessage()">Отправить</button></div>
+      <div class="chatrow"><input id="messageInput" class="field" maxlength="2000" autocomplete="off" value="${esc(initialDraft||'')}" placeholder="Написать сообщение…"><button class="btn primary" onclick="sendMessage()">Отправить</button></div>
     `);
     const box=document.getElementById('liveChat');
     if(box) box.scrollTop=box.scrollHeight;
