@@ -820,10 +820,26 @@ async function refreshNotificationCount(){
   if(!window.komuDb)return;
   try{
     const session=await ensureDevSession();
-    const {count,error}=await window.komuDb.from('notifications').select('id',{count:'exact',head:true}).eq('recipient_id',session.user.id).is('read_at',null);
+    const {data:unreadRows,error}=await window.komuDb
+      .from('notifications')
+      .select('conversation_id,id')
+      .eq('recipient_id',session.user.id)
+      .is('read_at',null);
     if(error)throw error;
+
+    // Один непрочитанный диалог = одно уведомление в колокольчике.
+    // Если уведомление не связано с диалогом, оно считается отдельно.
+    const keys=new Set();
+    (unreadRows||[]).forEach(n=>{
+      keys.add(n.conversation_id ? 'conversation:'+String(n.conversation_id) : 'notification:'+String(n.id));
+    });
+    const count=keys.size;
+
     const el=document.getElementById('notificationCount');
-    if(el){el.textContent=count?String(Math.min(count,99)):'';el.style.display=count?'inline-flex':'none';}
+    if(el){
+      el.textContent=count?String(Math.min(count,99)):'';
+      el.style.display=count?'inline-flex':'none';
+    }
   }catch(error){console.warn('Уведомления:',error.message)}
 }
 
