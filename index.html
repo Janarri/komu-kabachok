@@ -82,7 +82,7 @@ const data=[
 {t:'exchange',c:'exchange',i:'🔄',n:'Кабачки на яблоки',q:'есть 6 кабачков',p:'Центр',w:'По договорённости',d:'≈ 2 км',x:'Есть кабачки, хотелось бы яблоки.'}];
 let filterNow='all',typeNow='give',timeNow='Сегодня',editingListingId=null;
 let isTestMode=new URLSearchParams(window.location.search).get('test')==='1';
-function go(id){document.getElementById(id).scrollIntoView({behavior:'smooth'})}function startGive(){const title=document.querySelector('#give .sectionHead h2');if(title)title.textContent='Отдать или найти';go('give');typeSet('give')}
+function go(id){document.getElementById(id).scrollIntoView({behavior:'smooth'})}function startGive(){const title=document.querySelector('#give .sectionHead h2');if(title)title.textContent='Отдать или найти';editingListingId=null;clearListingDraftFields();typeSet('give');go('give')}
 function getFilteredListings(){
   const q=(document.getElementById('q')?.value||'').toLowerCase().trim();
   const matchesFilter=x=>{
@@ -358,7 +358,29 @@ function updateFormForType(){
   if(fields)fields.style.display=exchange?'block':'none';
   if(title)title.textContent=typeNow==='give'?'Что отдаёте?':typeNow==='looking'?'Что ищете?':'Что отдаёте и что хотите получить?';
 }
+function clearListingDraftFields(){
+  ['item','qty','comment','listingRegion','listingSettlement','place','landmark','custom','exchangeWant'].forEach(x=>{
+    const el=document.getElementById(x);
+    if(el)el.value='';
+  });
+  const input=document.getElementById('photos');
+  if(input)input.value='';
+  const preview=document.getElementById('photoPreview');
+  if(preview)preview.innerHTML='';
+  window.editingExistingPhotoHtml='';
+  window.listingLat=null;
+  window.listingLng=null;
+  window.listingSettlementCoords=null;
+  const status=document.getElementById('listingMapStatus');
+  if(status)status.textContent='Точка на карте не выбрана.';
+  if(document.getElementById('categorySelect'))document.getElementById('categorySelect').value='harvest';
+  timeNow='Сегодня';
+  document.querySelectorAll('#times .chip').forEach(x=>x.classList.toggle('active',x.textContent.trim()==='Сегодня'));
+  document.getElementById('custom').style.display='none';
+}
+
 function typeSet(t){
+  if(typeNow!==t) clearListingDraftFields();
   typeNow=t;
   ['tGive','tLook','tEx'].forEach(x=>document.getElementById(x).classList.remove('active'));
   document.getElementById(t==='give'?'tGive':t==='looking'?'tLook':'tEx').classList.add('active');
@@ -581,7 +603,7 @@ function previewPhotos(){
   const input=document.getElementById('photos'), box=document.getElementById('photoPreview');
   if(!input||!box)return;
   const files=[...input.files];
-  box.innerHTML='';
+  box.innerHTML=window.editingExistingPhotoHtml||'';
   files.slice(0,5).forEach((file,i)=>{
     const url=URL.createObjectURL(file);
     const wrap=document.createElement('div');
@@ -644,12 +666,18 @@ async function openMyListings(){
 async function editListing(id){
   try{
     const session=await ensureDevSession();
-    const {data:x,error}=await window.komuDb
-      .from('listings')
-      .select('id,type,category,title,quantity,description,settlement,region,pickup_time,location_label,landmark,location_lat,location_lng,exchange_want,status')
-      .eq('id',id)
-      .eq('owner_id',session.user.id)
-      .single();
+    const [{data:x,error},{data:photos, error:photoError}]=await Promise.all([
+      window.komuDb.from('listings')
+        .select('id,type,category,title,quantity,description,settlement,region,pickup_time,location_label,landmark,location_lat,location_lng,exchange_want,status')
+        .eq('id',id)
+        .eq('owner_id',session.user.id)
+        .single(),
+      window.komuDb.from('listing_photos')
+        .select('id,storage_path,sort_order')
+        .eq('listing_id',id)
+        .eq('owner_id',session.user.id)
+        .order('sort_order',{ascending:true})
+    ]);
     if(error) throw error;
     if(x.status!=='active'){
       open('Объявление уже завершено','<div class="notice">Завершённые объявления нельзя менять.</div>');
@@ -668,7 +696,14 @@ async function editListing(id){
     document.getElementById('exchangeWant').value=x.exchange_want||'';
     document.getElementById('categorySelect').value=x.category||'harvest';
     document.getElementById('photos').value='';
-    document.getElementById('photoPreview').innerHTML='';
+    window.editingExistingPhotoHtml=(photos||[]).map(p=>{
+      const {data}=window.komuDb.storage.from('listing-photos').getPublicUrl(p.storage_path);
+      return data?.publicUrl
+        ? '<div class="photoThumb" data-existing-photo="1"><img src="'+esc(data.publicUrl)+'" alt="'+esc(x.title)+'" loading="lazy"></div>'
+        : '';
+    }).join('');
+    document.getElementById('photoPreview').innerHTML=window.editingExistingPhotoHtml;
+    if(photoError) console.warn('Фото объявления при редактировании:',photoError.message);
     window.listingLat=Number.isFinite(Number(x.location_lat))?Number(x.location_lat):null;
     window.listingLng=Number.isFinite(Number(x.location_lng))?Number(x.location_lng):null;
     window.listingSettlementCoords=window.listingLat!==null&&window.listingLng!==null?[window.listingLat,window.listingLng]:null;
