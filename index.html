@@ -384,6 +384,19 @@ function typeSet(t){
   typeNow=t;
   ['tGive','tLook','tEx'].forEach(x=>document.getElementById(x).classList.remove('active'));
   document.getElementById(t==='give'?'tGive':t==='looking'?'tLook':'tEx').classList.add('active');
+
+  // После опубликованного объявления переключение типа должно открывать новую чистую форму.
+  const done=document.getElementById('done');
+  if(done&&done.style.display!=='none'){
+    done.style.display='none';
+    document.getElementById('fs1').style.display='block';
+    document.getElementById('fs2').style.display='none';
+    document.getElementById('fs3').style.display='none';
+    ['st1','st2','st3'].forEach((x,i)=>document.getElementById(x).classList.toggle('on',i===0));
+    const publishButton=document.getElementById('publishButton');
+    if(publishButton)publishButton.textContent='Опубликовать объявление';
+    editingListingId=null;
+  }
   updateFormForType();
 }
 function time(t,b){
