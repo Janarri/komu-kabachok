@@ -827,11 +827,27 @@ async function openListingDetails(id){
 }
 
 async function reportListing(id){
-  const reasons=[['price','Указана цена или продажа'],['address','Указан точный домашний адрес'],['forbidden','Не подходит для этого сайта'],['other','Другое']];
-  open('Пожаловаться на объявление',`<p class="muted">Выберите причину. Жалоба сохранится для проверки.</p><div class="reportReasons">${reasons.map(([code,label])=>'<button class="btn reportReason" type="button" data-reason="'+code+'">'+label+'</button>').join('')}</div>`);
-  document.querySelectorAll('#mbody .reportReason').forEach(btn=>{
-    btn.addEventListener('click',()=>submitReport(id,btn.dataset.reason));
-  });
+  try{
+    const session=await ensureDevSession();
+    const {data:existing,error}=await window.komuDb.from('listing_reports')
+      .select('id')
+      .eq('listing_id',id)
+      .eq('reporter_id',session.user.id)
+      .limit(1);
+    if(error) throw error;
+    if(existing?.length){
+      open('Жалоба уже отправлена','<div class="notice ok">Вы уже отправляли жалобу на это объявление.</div>');
+      return;
+    }
+
+    const reasons=[['price','Указана цена или продажа'],['address','Указан точный домашний адрес'],['forbidden','Не подходит для этого сайта'],['other','Другое']];
+    open('Пожаловаться на объявление',`<p class="muted">Выберите причину. Жалоба сохранится для проверки.</p><div class="reportReasons">${reasons.map(([code,label])=>'<button class="btn reportReason" type="button" data-reason="'+code+'">'+label+'</button>').join('')}</div>`);
+    document.querySelectorAll('#mbody .reportReason').forEach(btn=>{
+      btn.addEventListener('click',()=>submitReport(id,btn.dataset.reason));
+    });
+  }catch(error){
+    open('Не получилось проверить жалобу',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div>`);
+  }
 }
 async function submitReport(id,reason){
   try{
