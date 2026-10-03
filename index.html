@@ -21,6 +21,22 @@
   .navlinks{order:3;flex:1 0 100%;justify-content:space-between}
   .navlinks button{padding:7px 9px}
 }
+/* Prevent the navigation from forcing the whole page wider at browser zoom levels. */
+@media (max-width:1150px){
+  .nav{height:auto;min-height:72px;flex-wrap:wrap;justify-content:space-between;gap:8px;padding-top:8px;padding-bottom:8px}
+  .navlinks{display:none}
+  .brand{margin-right:auto}
+  .actions{flex:0 0 auto;gap:6px}
+  .actions .btn{white-space:nowrap}
+  .actions .btn.primary{min-width:0}
+}
+@media (max-width:560px){
+  .nav{flex-wrap:nowrap;gap:6px}
+  .brand{min-width:0}
+  .brandName{font-size:1rem}
+  .actions{gap:5px}
+  .actions .btn{padding:9px 10px}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://api-maps.yandex.ru/2.1/?apikey=c95635c4-9dd0-456d-bf8e-1db89d9a5747&lang=ru_RU"></script>
@@ -1507,7 +1523,7 @@ async function linkEmail(){
       open('Вход по почте',`<div class="notice ok">Этот аккаунт уже привязан к почте <b>${esc(session.user.email)}</b>.</div>`);
       return;
     }
-    const {error}=await window.komuDb.auth.updateUser({email});
+    const {error}=await window.komuDb.auth.updateUser({email},{emailRedirectTo:'https://komu-kabachok.vercel.app/'});
     if(error) throw error;
     open('Проверьте почту',`
       <div class="notice ok">Письмо отправлено на <b>${esc(email)}</b>.</div>
