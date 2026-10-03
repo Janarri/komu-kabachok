@@ -1449,23 +1449,52 @@ async function sendMessage(){
 async function login(){
   try{
     const session=await ensureDevSession();
-    const userId=session?.user?.id||'';
-    const shortId=userId?userId.slice(-6):'—';
-    open('Вход',`
-      <div class="notice ok">Вы вошли в тестовом режиме.</div>
-      <div class="testAccountBox">
-        <b>Текущий тестовый аккаунт</b><br>
-        <span class="muted">ID для проверки: <span class="testAccountCode">${esc(shortId)}</span></span>
-      </div>
-      <p>SMS мы ещё не подключали, поэтому для проверки сайта используется временный анонимный аккаунт.</p>
-      <p class="muted">Чтобы открыть сайт во втором браузере именно под другим пользователем, создайте новый тестовый аккаунт там.</p>
-      <div class="testAccountActions">
-        <button class="btn primary big" onclick="closeM()">Понятно</button>
-        <button class="btn big" onclick="newTestAccount()">Создать новый тестовый аккаунт</button>
-      </div>
+    const user=session?.user;
+    if(user?.email){
+      open('Вход по почте',`
+        <div class="notice ok">Почта подтверждена: <b>${esc(user.email)}</b></div>
+        <p>Вы вошли в свой аккаунт. Объявления и переписки сохранены за ним.</p>
+        <button class="btn primary big" onclick="closeM()">Готово</button>
+      `);
+      return;
+    }
+    open('Вход по почте',`
+      <p>Добавьте почту к текущему аккаунту — так сохранятся ваши объявления и переписки.</p>
+      <form onsubmit="event.preventDefault();linkEmail()">
+        <label for="accountEmail">Электронная почта</label>
+        <input id="accountEmail" class="field" type="email" autocomplete="email" placeholder="you@example.com" required>
+        <button class="btn primary big" type="submit" style="width:100%;margin-top:12px">Отправить письмо для подтверждения</button>
+      </form>
+      <p class="muted">После подтверждения вы сможете возвращаться в этот аккаунт по ссылке из письма. Пароль не нужен.</p>
     `);
   }catch(error){
-    open('Вход',`<div class="notice">${esc(error.message||'Не удалось войти.')}</div><p>Нужно включить <b>Anonymous Sign-Ins</b> в настройках Supabase. Это временный режим для проверки сайта, а не окончательная авторизация.</p>`);
+    open('Вход по почте',`<div class="notice">${esc(error.message||'Не удалось открыть вход.')}</div><p>Попробуйте обновить страницу.</p>`);
+  }
+}
+async function linkEmail(){
+  const input=document.getElementById('accountEmail');
+  const email=String(input?.value||'').trim();
+  if(!email||!input?.checkValidity()){input?.reportValidity();return;}
+  const button=document.querySelector('#mbody form button[type="submit"]');
+  if(button){button.disabled=true;button.textContent='Отправляем…';}
+  try{
+    const session=await ensureDevSession();
+    if(session?.user?.email){
+      open('Вход по почте',`<div class="notice ok">Этот аккаунт уже привязан к почте <b>${esc(session.user.email)}</b>.</div>`);
+      return;
+    }
+    const {error}=await window.komuDb.auth.updateUser({email});
+    if(error) throw error;
+    open('Проверьте почту',`
+      <div class="notice ok">Письмо отправлено на <b>${esc(email)}</b>.</div>
+      <p>Откройте письмо от Supabase и нажмите ссылку подтверждения. Она вернёт вас на сайт.</p>
+      <p><b>Важно:</b> пока не очищайте данные браузера и не нажимайте «Создать новый тестовый аккаунт» — сейчас мы привязываем почту к вашему текущему аккаунту.</p>
+      <button class="btn primary big" onclick="closeM()">Понятно</button>
+    `);
+  }catch(error){
+    open('Не получилось отправить письмо',`<div class="notice">${esc(error.message||'Неизвестная ошибка')}</div><p>Проверьте адрес и попробуйте ещё раз. Если почта уже занята другим аккаунтом, напишите мне — не будем переносить данные автоматически.</p><button class="btn big" onclick="login()">Назад</button>`);
+  }finally{
+    if(button)button.disabled=false;
   }
 }
 async function newTestAccount(){
