@@ -1542,7 +1542,7 @@ async function linkEmail(){
       open('Вход по почте',`<div class="notice ok">Этот аккаунт уже привязан к почте <b>${esc(session.user.email)}</b>.</div>`);
       return;
     }
-    const {error}=await window.komuDb.auth.updateUser({email},{emailRedirectTo:'https://komu-kabachok.vercel.app/'});
+    const {error}=await window.komuDb.auth.updateUser({email},{emailRedirectTo:window.location.origin+window.location.pathname});
     if(error) throw error;
     open('Проверьте почту',`
       <div class="notice ok">Письмо отправлено на <b>${esc(email)}</b>.</div>
