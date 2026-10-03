@@ -37,6 +37,25 @@
   .actions{gap:5px}
   .actions .btn{padding:9px 10px}
 }
+/* Compact header: fit the logo and action buttons without clipping at browser zoom. */
+@media (max-width:1450px){
+  header .wrap.nav{height:auto;min-height:64px;flex-wrap:nowrap;gap:10px;padding-top:6px;padding-bottom:6px}
+  header .navlinks{display:none}
+  header .brand{flex:0 1 auto;min-width:0;margin-right:auto;font-size:1.12rem;gap:8px}
+  header .brandLogo{width:42px;height:42px}
+  header .actions{flex:0 0 auto;gap:6px}
+  header .actions .btn{font-size:.9rem;padding:8px 10px;border-radius:12px;white-space:nowrap;min-height:42px}
+  header .actions .notificationBtn{min-width:44px;padding-inline:8px}
+  header .actions .primary{max-width:145px;line-height:1.15}
+}
+@media (max-width:560px){
+  header .wrap.nav{gap:5px}
+  header .brand{font-size:.98rem}
+  header .brandLogo{width:36px;height:36px}
+  header .actions .btn{font-size:.82rem;padding:7px 8px;min-height:38px}
+  header .actions .notificationBtn{min-width:38px}
+  header .actions .primary{max-width:112px}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://api-maps.yandex.ru/2.1/?apikey=c95635c4-9dd0-456d-bf8e-1db89d9a5747&lang=ru_RU"></script>
