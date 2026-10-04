@@ -1550,6 +1550,8 @@ async function linkEmail(){
       open('Вход по почте',`<div class="notice ok">Этот аккаунт уже привязан к почте <b>${esc(session.user.email)}</b>.</div>`);
       return;
     }
+    const {error:consentError}=await window.komuDb.from('user_consents').insert({user_id:session.user.id,consent_version:'2026-10-04-v1',terms_version:'2026-10-04-v1'});
+    if(consentError) throw new Error('Не удалось сохранить согласие. Пожалуйста, попробуйте ещё раз. '+consentError.message);
     const {error}=await window.komuDb.auth.updateUser({email},{emailRedirectTo:window.location.origin+window.location.pathname});
     if(error) throw error;
     open('Проверьте почту',`
