@@ -1502,7 +1502,10 @@ async function login(){
     const session=await ensureDevSession();
     const user=session?.user;
     if(user?.email){
-      open('Вход по почте',`
+      open('Вход по почте',`<div class="notice ok">Почта подтверждена: <b>${esc(user.email)}</b></div><p>Вы вошли в свой аккаунт. Объявления и переписки сохранены за ним.</p><button class="btn primary big" onclick="closeM()">Готово</button>`);
+      return;
+    }
+    open('Вход по почте',`
       <p>Вход бесплатный: без пароля и SMS. Добавьте почту к текущему аккаунту — объявления и переписки останутся на месте.</p>
       <form onsubmit="event.preventDefault();linkEmail()">
         <label for="accountEmail">Электронная почта</label>
@@ -1513,25 +1516,6 @@ async function login(){
       </form>
       <p class="muted">После подтверждения почты вы сможете входить по одноразовой ссылке из письма. Пароль и номер телефона не нужны.</p>
       <div style="border-top:1px solid var(--line);margin-top:18px;padding-top:14px"><b>Уже привязали почту?</b><form onsubmit="event.preventDefault();sendEmailLogin()"><label for="loginEmail">Электронная почта</label><input id="loginEmail" class="field" type="email" autocomplete="email" placeholder="Ваша почта" required><button class="btn big" type="submit" style="width:100%;margin-top:10px">Прислать ссылку для входа</button></form></div>
-    `);
-      return;
-    }
-    open('Вход по почте',`
-      <p>Добавьте почту к текущему аккаунту — так сохранятся ваши объявления и переписки.</p>
-      <form onsubmit="event.preventDefault();linkEmail()">
-        <label for="accountEmail">Электронная почта</label>
-        <input id="accountEmail" class="field" type="email" autocomplete="email" placeholder="you@example.com" required>
-        <button class="btn primary big" type="submit" style="width:100%;margin-top:12px">Отправить письмо для подтверждения</button>
-      </form>
-      <p class="muted">После подтверждения вы сможете возвращаться в этот аккаунт по ссылке из письма. Пароль не нужен.</p>
-      <div style="border-top:1px solid var(--line);margin-top:18px;padding-top:14px">
-        <b>Уже привязали почту?</b>
-        <form onsubmit="event.preventDefault();sendEmailLogin()">
-          <label for="loginEmail">Получить ссылку для входа</label>
-          <input id="loginEmail" class="field" type="email" autocomplete="email" placeholder="Ваша почта" required>
-          <button class="btn big" type="submit" style="width:100%;margin-top:10px">Прислать ссылку для входа</button>
-        </form>
-      </div>
     `);
   }catch(error){
     open('Вход по почте',`<div class="notice">${esc(error.message||'Не удалось открыть вход.')}</div><p>Попробуйте обновить страницу.</p>`);
