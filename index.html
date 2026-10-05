@@ -95,7 +95,7 @@
     </div>
   </div>
 </div></div></section>
-</main><footer><div class="wrap footgrid"><div><b>Кому кабачок?</b><br>По всей России · бесплатно · по-соседски</div><div><button class="btn" onclick="help()">Правила и помощь</button><button class="btn" onclick="accessInfo()">Размер текста</button></div></div></footer>
+</main><footer><div class="wrap footgrid"><div><b>Кому кабачок?</b><br>По всей России · бесплатно · по-соседски</div><div><button class="btn" onclick="help()">Правила и помощь</button><button class="btn" onclick="accessInfo()">Размер текста</button><a class="btn" href="legal.html#privacy">Политика данных</a><a class="btn" href="legal.html#terms">Правила</a></div></div></footer>
 <div class="access"><button onclick="font(-.1)">A−</button><button onclick="font(0)">A</button><button onclick="font(.1)">A+</button></div>
 <div id="modalbg" class="modalbg" onclick="if(event.target.id==='modalbg')closeM()"><div class="modal"><div class="modalhead"><h2 id="mtitle">Помощь</h2><button class="close" onclick="closeM()">×</button></div><div id="mbody"></div></div></div>
 
@@ -1230,7 +1230,7 @@ function help(){open('Помощь и ответы',`
 
 <details class="faqDetail">
   <summary>Кто увидит мой номер телефона?</summary>
-  <p>Другим пользователям номер не показывается автоматически. Он нужен для подтверждения, что объявление размещает реальный человек. Для общения есть сообщения на сайте.</p>
+  <p>Номер телефона не требуется. Для входа используется электронная почта: мы отправляем одноразовую ссылку для подтверждения и входа. Для общения есть сообщения на сайте.</p>
 </details>
 
 <details class="faqDetail">
@@ -1502,29 +1502,20 @@ async function login(){
     const session=await ensureDevSession();
     const user=session?.user;
     if(user?.email){
-      open('Вход по почте',`
-        <div class="notice ok">Почта подтверждена: <b>${esc(user.email)}</b></div>
-        <p>Вы вошли в свой аккаунт. Объявления и переписки сохранены за ним.</p>
-        <button class="btn primary big" onclick="closeM()">Готово</button>
-      `);
+      open('Вход по почте',`<div class="notice ok">Почта подтверждена: <b>${esc(user.email)}</b></div><p>Вы вошли в свой аккаунт. Объявления и переписки сохранены за ним.</p><button class="btn primary big" onclick="closeM()">Готово</button>`);
       return;
     }
     open('Вход по почте',`
-      <p>Добавьте почту к текущему аккаунту — так сохранятся ваши объявления и переписки.</p>
+      <p>Вход бесплатный: без пароля и SMS. Добавьте почту к текущему аккаунту — объявления и переписки останутся на месте.</p>
       <form onsubmit="event.preventDefault();linkEmail()">
         <label for="accountEmail">Электронная почта</label>
         <input id="accountEmail" class="field" type="email" autocomplete="email" placeholder="you@example.com" required>
-        <button class="btn primary big" type="submit" style="width:100%;margin-top:12px">Отправить письмо для подтверждения</button>
+        <label style="display:flex;align-items:flex-start;gap:9px;font-weight:500;margin-top:14px"><input id="personalDataConsent" type="checkbox" required style="width:19px;height:19px;flex:0 0 auto;margin-top:2px"><span>Даю отдельное согласие на обработку персональных данных: <a href="legal.html#consent" target="_blank" rel="noopener">текст согласия</a>. <a href="legal.html#privacy" target="_blank" rel="noopener">Политика данных</a>.</span></label>
+        <label style="display:flex;align-items:flex-start;gap:9px;font-weight:500;margin-top:10px"><input id="termsConsent" type="checkbox" required style="width:19px;height:19px;flex:0 0 auto;margin-top:2px"><span>Принимаю <a href="legal.html#terms" target="_blank" rel="noopener">пользовательское соглашение</a>.</span></label>
+        <button class="btn primary big" type="submit" style="width:100%;margin-top:14px">Отправить письмо для подтверждения</button>
       </form>
-      <p class="muted">После подтверждения вы сможете возвращаться в этот аккаунт по ссылке из письма. Пароль не нужен.</p>
-      <div style="border-top:1px solid var(--line);margin-top:18px;padding-top:14px">
-        <b>Уже привязали почту?</b>
-        <form onsubmit="event.preventDefault();sendEmailLogin()">
-          <label for="loginEmail">Получить ссылку для входа</label>
-          <input id="loginEmail" class="field" type="email" autocomplete="email" placeholder="Ваша почта" required>
-          <button class="btn big" type="submit" style="width:100%;margin-top:10px">Прислать ссылку для входа</button>
-        </form>
-      </div>
+      <p class="muted">После подтверждения почты вы сможете входить по одноразовой ссылке из письма. Пароль и номер телефона не нужны.</p>
+      <div style="border-top:1px solid var(--line);margin-top:18px;padding-top:14px"><b>Уже привязали почту?</b><form onsubmit="event.preventDefault();sendEmailLogin()"><label for="loginEmail">Электронная почта</label><input id="loginEmail" class="field" type="email" autocomplete="email" placeholder="Ваша почта" required><button class="btn big" type="submit" style="width:100%;margin-top:10px">Прислать ссылку для входа</button></form></div>
     `);
   }catch(error){
     open('Вход по почте',`<div class="notice">${esc(error.message||'Не удалось открыть вход.')}</div><p>Попробуйте обновить страницу.</p>`);
@@ -1537,12 +1528,15 @@ async function linkEmail(){
   const button=document.querySelector('#mbody form button[type="submit"]');
   if(button){button.disabled=true;button.textContent='Отправляем…';}
   try{
+    if(!document.getElementById('personalDataConsent')?.checked || !document.getElementById('termsConsent')?.checked){open('Нужно подтвердить согласие','Отметьте оба пункта: согласие на обработку данных и пользовательское соглашение.');return;}
     const session=await ensureDevSession();
     if(session?.user?.email){
       open('Вход по почте',`<div class="notice ok">Этот аккаунт уже привязан к почте <b>${esc(session.user.email)}</b>.</div>`);
       return;
     }
-    const {error}=await window.komuDb.auth.updateUser({email},{emailRedirectTo:'https://komu-kabachok.vercel.app/'});
+    const {error:consentError}=await window.komuDb.from('user_consents').insert({user_id:session.user.id,consent_version:'2026-10-04-v1',terms_version:'2026-10-04-v1'});
+    if(consentError) throw new Error('Не удалось сохранить согласие. Пожалуйста, попробуйте ещё раз. '+consentError.message);
+    const {error}=await window.komuDb.auth.updateUser({email},{emailRedirectTo:window.location.origin+window.location.pathname});
     if(error) throw error;
     open('Проверьте почту',`
       <div class="notice ok">Письмо отправлено на <b>${esc(email)}</b>.</div>
