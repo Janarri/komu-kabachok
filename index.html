@@ -56,6 +56,43 @@
   header .actions .notificationBtn{min-width:38px}
   header .actions .primary{max-width:112px}
 }
+/* Final header button normalization: keep the login/actions controls visually aligned at desktop zoom. */
+header .actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex:0 0 auto;
+}
+header .actions .btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-sizing:border-box;
+  height:42px;
+  min-height:42px;
+  margin:0;
+  line-height:1;
+  white-space:nowrap;
+}
+header .actions .login{
+  min-width:78px;
+  padding-inline:13px;
+}
+header .actions .primary{
+  min-width:132px;
+  padding-inline:14px;
+}
+header .actions .notificationBtn{
+  min-width:44px;
+  padding-inline:9px;
+}
+@media (max-width:560px){
+  header .actions{gap:5px}
+  header .actions .btn{height:38px;min-height:38px}
+  header .actions .login{min-width:72px}
+  header .actions .primary{min-width:0}
+  header .actions .notificationBtn{min-width:38px}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://api-maps.yandex.ru/2.1/?apikey=c95635c4-9dd0-456d-bf8e-1db89d9a5747&lang=ru_RU"></script>
